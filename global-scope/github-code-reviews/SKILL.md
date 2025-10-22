@@ -30,7 +30,7 @@ For each problem or enhancement identified:
 
 **4. Structure and save the review**
 
-- Save detailed review to `.scratch/code-review-pr-{NUMBER}-{DATE}.md`
+- Save detailed review to `.scratch/code-review-pr-{NUMBER}-{ISO-8601-DATETIME-WITH-TZ-OFFSET}.md`
 - Create `.scratch/` directory if needed (add to `.gitignore`)
 - Post summary as PR comment
 
@@ -98,7 +98,7 @@ See `references/severity-classifications.md` for detailed definitions, examples,
 ## Documenting Reviews
 
 **Detailed review format:**
-Save to `.scratch/code-review-pr-{NUMBER}-{DATE}.md` with:
+Save to `.scratch/code-review-pr-{NUMBER}-{ISO-8601-DATETIME-WITH-TZ-OFFSET}.md` with:
 - Summary of changes
 - Findings organized by severity (Blocker, Critical, Important, Enhancement)
 - Each finding includes: File, Dimension, Severity, Complexity, Time Estimate, Fix Location, Related Issue
@@ -164,7 +164,7 @@ mkdir -p .scratch
 echo ".scratch/" >> .gitignore  # If not already there
 
 # 4. Save detailed review
-# .scratch/code-review-pr-{NUMBER}-{DATE}.md
+# .scratch/code-review-pr-{NUMBER}-{ISO-8601-DATETIME-WITH-TZ-OFFSET}.md
 # See references/review-structure.md for template
 
 # 5. Research existing issues for each finding

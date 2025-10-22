@@ -10,7 +10,7 @@ This document provides detailed templates and examples for documenting code revi
 # Code Review: PR #{NUMBER} - {TITLE}
 
 **Reviewer:** Claude Code
-**Date:** {DATE}
+**Date:** {ISO-8601-DATETIME-WITH-TZ-OFFSET}
 **PR:** {URL}
 
 ## Summary
@@ -117,7 +117,7 @@ Add test cases for error conditions with mocked failures.
 ```markdown
 ## Code Review Summary
 
-Detailed review: `.scratch/code-review-pr-123-2025-10-18.md`
+Detailed review: `.scratch/code-review-pr-123-2025-10-18T14:23:45-04:00.md`
 
 ### Blockers (3) - Must fix before merge
 1. **Missing required features from #121** (async validation, custom errors) - 4hrs, fix in this branch
@@ -161,7 +161,7 @@ See detailed review for full analysis, recommendations, and time estimates.
 ## Storage and Sharing
 
 **Detailed reviews:**
-- Save to `.scratch/code-review-pr-{NUMBER}-{DATE}.md`
+- Save to `.scratch/code-review-pr-{NUMBER}-{ISO-8601-DATETIME-WITH-TZ-OFFSET}.md`
 - `.scratch/` directory is gitignored (create if needed)
 - Preserves full analysis for reference
 - Can be consulted later without reading full code again
