@@ -97,6 +97,11 @@ echo -e "${GREEN}✓${NC} Created symlink: .planning"
 ln -s ../../.docimp-shared/.scratch .scratch
 echo -e "${GREEN}✓${NC} Created symlink: .scratch"
 
+# Create docs directory and symlink to patterns
+mkdir -p docs
+ln -s ../../../.docimp-shared/docs/patterns docs/patterns
+echo -e "${GREEN}✓${NC} Created symlink: docs/patterns"
+
 # Create .claude directory and symlinks
 mkdir -p .claude
 ln -s ../../../.docimp-shared/.claude/skills .claude/skills
@@ -122,6 +127,7 @@ echo "  ✓ CLAUDE.md → ../../.docimp-shared/CLAUDE.md"
 echo "  ✓ CLAUDE_CONTEXT.md → ../../.docimp-shared/CLAUDE_CONTEXT.md"
 echo "  ✓ .planning → ../../.docimp-shared/.planning"
 echo "  ✓ .scratch → ../../.docimp-shared/.scratch"
+echo "  ✓ docs/patterns → ../../../.docimp-shared/docs/patterns"
 echo "  ✓ .claude/skills → ../../../.docimp-shared/.claude/skills"
 echo "  ✓ .claude/settings.local.json → ../../../.docimp-shared/.claude/settings.local.json"
 echo ""
