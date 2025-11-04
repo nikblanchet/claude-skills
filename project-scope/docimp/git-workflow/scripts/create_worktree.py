@@ -115,9 +115,33 @@ def prompt_install_hooks() -> None:
 
 
 def create_symlink(target: str, link_name: Path) -> None:
-    """Create a symlink and print success message."""
-    link_name.symlink_to(target)
-    print_success(f"✓ Created symlink: {link_name.name}")
+    """Create a symlink and print success message.
+
+    Validates that no file exists at link location before creating symlink.
+    If symlink already exists and points to the correct target, skips creation.
+
+    Args:
+        target: Relative or absolute path to symlink target
+        link_name: Path where symlink should be created
+
+    Raises:
+        SystemExit: If file exists at link location or symlink creation fails
+    """
+    # Check if link already exists
+    if link_name.exists() or link_name.is_symlink():
+        # If it's already a symlink to the correct target, skip
+        if link_name.is_symlink() and link_name.readlink() == Path(target):
+            print_info(f"  Symlink already exists: {link_name.name}")
+            return
+        # Otherwise, refuse to overwrite
+        exit_with_error(f"File or symlink already exists at {link_name}, refusing to overwrite")
+
+    # Create the symlink
+    try:
+        link_name.symlink_to(target)
+        print_success(f"✓ Created symlink: {link_name.name}")
+    except OSError as e:
+        exit_with_error(f"Failed to create symlink {link_name.name}: {e}")
 
 
 def main() -> int:
