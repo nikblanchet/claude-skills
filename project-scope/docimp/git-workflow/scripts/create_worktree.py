@@ -198,25 +198,38 @@ def main() -> int:
     print_info(f"Creating worktree: {worktree_path}")
     run_git('worktree', 'add', str(worktree_path), '-b', args.branch_name)
 
-    # Create symlinks
-    print_info("Creating symlinks to shared files...")
+    # Create symlinks with cleanup on failure
+    try:
+        print_info("Creating symlinks to shared files...")
 
-    # Root-level symlinks
-    create_symlink('../../.docimp-shared/CLAUDE.md', worktree_path / 'CLAUDE.md')
-    create_symlink('../../.docimp-shared/CLAUDE_CONTEXT.md', worktree_path / 'CLAUDE_CONTEXT.md')
-    create_symlink('../../.docimp-shared/.planning', worktree_path / '.planning')
-    create_symlink('../../.docimp-shared/.scratch', worktree_path / '.scratch')
+        # Root-level symlinks
+        create_symlink('../../.docimp-shared/CLAUDE.md', worktree_path / 'CLAUDE.md')
+        create_symlink('../../.docimp-shared/CLAUDE_CONTEXT.md', worktree_path / 'CLAUDE_CONTEXT.md')
+        create_symlink('../../.docimp-shared/.planning', worktree_path / '.planning')
+        create_symlink('../../.docimp-shared/.scratch', worktree_path / '.scratch')
 
-    # docs/patterns symlink
-    docs_dir = worktree_path / 'docs'
-    docs_dir.mkdir(exist_ok=True)
-    create_symlink('../../../.docimp-shared/docs/patterns', docs_dir / 'patterns')
+        # docs/patterns symlink
+        docs_dir = worktree_path / 'docs'
+        docs_dir.mkdir(exist_ok=True)
+        create_symlink('../../../.docimp-shared/docs/patterns', docs_dir / 'patterns')
 
-    # .claude directory symlinks
-    claude_dir = worktree_path / '.claude'
-    claude_dir.mkdir(exist_ok=True)
-    create_symlink('../../../.docimp-shared/.claude/skills', claude_dir / 'skills')
-    create_symlink('../../../.docimp-shared/.claude/settings.local.json', claude_dir / 'settings.local.json')
+        # .claude directory symlinks
+        claude_dir = worktree_path / '.claude'
+        claude_dir.mkdir(exist_ok=True)
+        create_symlink('../../../.docimp-shared/.claude/skills', claude_dir / 'skills')
+        create_symlink('../../../.docimp-shared/.claude/settings.local.json', claude_dir / 'settings.local.json')
+    except SystemExit as e:
+        # Cleanup on failure - remove the worktree
+        print_error(f"Symlink creation failed")
+        print_info("Cleaning up worktree...")
+        try:
+            run_git('worktree', 'remove', str(worktree_path), '--force')
+            print_info("Worktree removed successfully")
+        except Exception as cleanup_error:
+            print_warning(f"Failed to clean up worktree: {cleanup_error}")
+            print_warning(f"Please manually remove: git worktree remove {worktree_path}")
+        # Re-raise to preserve original exit code
+        raise
 
     # Print success summary
     print()
