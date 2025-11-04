@@ -17,6 +17,7 @@ class Colors:
     """ANSI color codes for terminal output."""
     GREEN = '\033[0;32m'
     RED = '\033[0;31m'
+    YELLOW = '\033[1;33m'
     BLUE = '\033[0;34m'
     NC = '\033[0m'  # No Color
 
@@ -34,6 +35,11 @@ def print_info(message: str) -> None:
 def print_success(message: str) -> None:
     """Print success message in green."""
     print(f"{Colors.GREEN}{message}{Colors.NC}")
+
+
+def print_warning(message: str) -> None:
+    """Print warning message in yellow."""
+    print(f"{Colors.YELLOW}{message}{Colors.NC}")
 
 
 def exit_with_error(message: str) -> NoReturn:
@@ -62,9 +68,18 @@ def get_hooks_source_dir() -> Path:
 
 
 def install_hook(hook_source: Path, hooks_target_dir: Path) -> None:
-    """Install a single hook file."""
+    """Install a single hook file.
+
+    Validates that hook has a valid shebang before installation.
+    """
     hook_name = hook_source.name
     hook_target = hooks_target_dir / hook_name
+
+    # Validate shebang exists
+    with open(hook_source, 'r') as f:
+        first_line = f.readline()
+        if not first_line.startswith('#!'):
+            print_warning(f"Warning: {hook_name} missing shebang (starts with '{first_line[:20]}')")
 
     # Copy the hook file
     shutil.copy2(hook_source, hook_target)
