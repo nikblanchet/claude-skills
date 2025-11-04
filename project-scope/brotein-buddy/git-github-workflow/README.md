@@ -19,28 +19,91 @@ In my setup, `<python-path>` resolves to: `/Users/nik/miniconda3/envs/bbud/bin/p
 
 You have several options for using this skill with your own setup:
 
-#### Option 1: Create a Local Configuration File (Recommended)
+#### Option 1: Enhanced SessionStart Hook (Recommended for Seamless Operation)
 
-Create a gitignored file (e.g., `LOCAL_SETUP.md` at the repository root) that documents your actual paths:
+The best approach is to enhance your Claude Code SessionStart hook to automatically detect project-specific Python paths. This provides zero-friction usage - skills just work without you thinking about placeholders.
 
-```markdown
-# Local Environment Setup
+**Setup Instructions:**
 
-## Python Path
-<python-path> = /your/actual/path/to/python
+1. **Locate or create your SessionStart hook:**
+   - Default location: `~/.claude/detect-python-env.sh` (or similar)
+   - If you don't have one, create it and register it in `~/.claude/settings.json`
 
-## Example Commands
-- Run tests: /your/actual/path/to/python -m pytest
-- Create worktree: /your/actual/path/to/python .claude/skills/git-github-workflow/scripts/setup-worktree.py
+2. **Add project detection logic:**
+
+```bash
+#!/bin/bash
+# Detect active Python environment and communicate it to Claude Code
+# Enhanced with project-specific detection
+
+# Get current working directory for project detection
+CURRENT_DIR="$PWD"
+
+# Default Python detection
+PYTHON_PATH=$(which python || which python3)
+# ... (your existing detection logic)
+
+# Project-specific Python path detection
+PROJECT_PYTHON_PATH=""
+PROJECT_CONTEXT=""
+
+# Check if we're in BroteinBuddy project
+if [[ "$CURRENT_DIR" == *"BroteinBuddy"* ]]; then
+    # BroteinBuddy uses the bbud conda environment
+    BBUD_PYTHON="/path/to/your/conda/envs/bbud/bin/python"
+    if [ -f "$BBUD_PYTHON" ]; then
+        PROJECT_PYTHON_PATH="$BBUD_PYTHON"
+        PROJECT_CONTEXT="BroteinBuddy"
+        PLACEHOLDER_GUIDANCE="When you see <python-path> in skills, use: $BBUD_PYTHON"
+    fi
+fi
+
+# Add to your hook output
+if [ -n "$PROJECT_CONTEXT" ]; then
+    echo "PROJECT-SPECIFIC CONTEXT DETECTED:"
+    echo "- Project: $PROJECT_CONTEXT"
+    echo "- Python for this project: $PROJECT_PYTHON_PATH"
+    echo ""
+    echo "$PLACEHOLDER_GUIDANCE"
+fi
 ```
 
-#### Option 2: Use Environment Detection
+3. **Benefits:**
+   - Completely automatic - skills work seamlessly
+   - No manual path substitution needed
+   - Project-aware - correct Python path for each project
+   - Graceful fallback if hook isn't configured
 
-If you have a SessionStart hook that detects your Python environment, you can reference the detected environment when Claude Code reads this skill.
+**See also:** For a complete working example, check the enhanced hook at `~/.claude/detect-python-env.sh` in my setup.
 
-#### Option 3: Direct Substitution
+#### Option 2: Manual .local/ Configuration (Fallback)
 
-Simply replace `<python-path>` with your actual path wherever you see it in the documentation.
+Create a `.local/` directory in your project root with environment-specific configuration:
+
+```bash
+# Create .local/ directory (gitignored)
+mkdir .local
+
+# Create env-config.md
+cat > .local/env-config.md << 'EOF'
+# Local Environment Configuration
+
+## Python Paths
+BBUD_PYTHON=/your/path/to/conda/envs/bbud/bin/python
+
+## Usage
+When you see <python-path> in skills, use: /your/path/to/conda/envs/bbud/bin/python
+EOF
+```
+
+Add to `.gitignore`:
+```
+.local/
+```
+
+#### Option 3: Direct Substitution (Last Resort)
+
+Simply replace `<python-path>` with your actual path wherever you see it in the documentation. This works but requires manual effort each time.
 
 ### Why Placeholders?
 
