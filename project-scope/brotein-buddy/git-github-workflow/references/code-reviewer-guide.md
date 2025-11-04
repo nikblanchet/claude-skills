@@ -45,7 +45,7 @@ For subsequent reviews, emphasize that the agent should review the complete comm
 ### 4. Environment Context
 
 Inform the agent about the bbud conda environment:
-- Tests must be run using `/Users/nik/miniconda3/envs/bbud/bin/python -m pytest`
+- Tests must be run using `<python-path> -m pytest`
 - Any Python scripts use the bbud environment
 - This ensures tests run correctly during the review process
 
@@ -115,7 +115,7 @@ Context to provide:
 1. Read the PR description and comments: gh pr view 42
 2. Read the relevant section from .planning/PLAN.md (Section 2.4: Implement random selection)
 3. Review commit history: git log main..HEAD (show complete history)
-4. Environment: Use bbud conda environment (/Users/nik/miniconda3/envs/bbud/bin/python) for running tests
+4. Environment: Use bbud conda environment (<python-path>) for running tests
 5. Apply brotein-buddy-standards, development-standards, and exhaustive-testing skills
 
 Focus on all 11 code review dimensions. Identify blockers, suggestions, and potential enhancements.
@@ -131,7 +131,7 @@ Context to provide:
 2. Read the PR description and ALL comments: gh pr view 42
 3. Read the relevant section from .planning/PLAN.md (Section 2.4: Implement random selection)
 4. Review COMPLETE commit history: git log main..HEAD (entire branch, not just recent commits)
-5. Environment: Use bbud conda environment (/Users/nik/miniconda3/envs/bbud/bin/python) for running tests
+5. Environment: Use bbud conda environment (<python-path>) for running tests
 6. Apply brotein-buddy-standards, development-standards, and exhaustive-testing skills
 
 Important instructions for the agent:

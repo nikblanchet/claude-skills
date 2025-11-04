@@ -10,10 +10,67 @@ IMPORTANT: Run this script with the bbud conda environment activated:
     ./setup-worktree.py
 """
 
+import argparse
 import os
+import random
+import socket
 import subprocess
 import sys
 from pathlib import Path
+
+
+def parse_arguments():
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        description='Create a new git worktree with shared files symlinked',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='''
+Examples:
+  # Interactive mode (prompts for all inputs)
+  ./setup-worktree.py
+
+  # CLI mode (non-interactive)
+  ./setup-worktree.py --source-worktree main --branch-name feature/new-thing --dir-name new-thing
+
+  # Hybrid mode (CLI with some interactive prompts)
+  ./setup-worktree.py --source-worktree main --branch-name feature/new-thing
+
+  # Exclude local changes from source worktree
+  ./setup-worktree.py --source-worktree main --exclude-changes
+
+Branch naming conventions:
+  - setup/name         -> for setup tasks
+  - feature/name       -> for new features
+  - bug/name           -> for bug fixes
+  - bug/123-name       -> for bug fixes with issue number
+        '''
+    )
+
+    parser.add_argument(
+        '--source-worktree',
+        type=str,
+        help='Name of the source worktree to branch from (e.g., "main"). If not provided, will prompt interactively.'
+    )
+
+    parser.add_argument(
+        '--branch-name',
+        type=str,
+        help='Name of the new branch (e.g., "feature/new-thing"). If not provided, will prompt interactively.'
+    )
+
+    parser.add_argument(
+        '--dir-name',
+        type=str,
+        help='Directory name for the worktree in wt/ folder (e.g., "new-thing"). If not provided, will prompt interactively.'
+    )
+
+    parser.add_argument(
+        '--exclude-changes',
+        action='store_true',
+        help='Exclude local changes from source worktree (default: include changes if they exist)'
+    )
+
+    return parser.parse_args()
 
 
 def run_git_command(cmd, cwd=None, check=True):
@@ -83,8 +140,23 @@ def get_worktrees():
     return worktrees
 
 
-def select_source_worktree(worktrees):
-    """Interactively select which worktree to branch from."""
+def select_source_worktree(worktrees, source_worktree_name=None):
+    """Select which worktree to branch from (CLI arg or interactive)."""
+    # If source worktree name provided via CLI, validate and use it
+    if source_worktree_name:
+        for wt in worktrees:
+            if wt['branch'] == source_worktree_name:
+                print(f"\nUsing source worktree: {source_worktree_name}")
+                return wt
+
+        # Name not found, show error with available options
+        print(f"\nError: Source worktree '{source_worktree_name}' not found")
+        print("\nAvailable worktrees:")
+        for wt in worktrees:
+            print(f"  - {wt['branch']}")
+        sys.exit(1)
+
+    # Interactive mode - prompt user to select
     print("\nAvailable worktrees to branch from:")
     print()
 
@@ -121,7 +193,7 @@ def select_source_worktree(worktrees):
             print("Please enter a valid number")
 
 
-def pull_and_check_status(worktree_path):
+def pull_and_check_status(worktree_path, exclude_changes=False):
     """Pull from remote and check for conflicts or local changes."""
     print(f"\nPulling latest changes in {worktree_path}...")
 
@@ -149,6 +221,12 @@ def pull_and_check_status(worktree_path):
         print("\nLocal changes detected:")
         print(status_result.stdout)
 
+        # If --exclude-changes flag is set, automatically exclude without prompting
+        if exclude_changes:
+            print("\nExcluding local changes (--exclude-changes flag set)")
+            return False
+
+        # Interactive mode - prompt user
         while True:
             choice = input("\nInclude these local changes in the new worktree? (y/n): ").strip().lower()
             if choice in ['y', 'yes']:
@@ -161,8 +239,14 @@ def pull_and_check_status(worktree_path):
     return False
 
 
-def get_branch_details():
-    """Get branch name and directory name from user."""
+def get_branch_details(branch_name=None, dir_name=None):
+    """Get branch name and directory name (CLI args or interactive)."""
+    # If both provided via CLI, use them
+    if branch_name and dir_name:
+        print(f"\nUsing branch: {branch_name} -> wt/{dir_name}/")
+        return branch_name, dir_name
+
+    # Need to prompt for missing values
     print("\nEnter details for the new worktree:")
     print("Examples:")
     print("  Branch: setup/skills-and-subagents  -> Directory: skills-and-subagents")
@@ -170,17 +254,82 @@ def get_branch_details():
     print("  Branch: bug/123-fix-inventory       -> Directory: 123-fix-inventory")
     print()
 
-    branch = input("Branch name: ").strip()
-    if not branch:
-        print("Error: Branch name is required")
-        sys.exit(1)
+    # Get branch name (use CLI arg or prompt)
+    if branch_name:
+        branch = branch_name
+        print(f"Branch name: {branch} (from CLI)")
+    else:
+        branch = input("Branch name: ").strip()
+        if not branch:
+            print("Error: Branch name is required")
+            sys.exit(1)
 
-    dir_name = input("Directory name (for wt/ folder): ").strip()
-    if not dir_name:
-        print("Error: Directory name is required")
-        sys.exit(1)
+    # Get directory name (use CLI arg or prompt)
+    if dir_name:
+        final_dir_name = dir_name
+        print(f"Directory name (for wt/ folder): {final_dir_name} (from CLI)")
+    else:
+        final_dir_name = input("Directory name (for wt/ folder): ").strip()
+        if not final_dir_name:
+            print("Error: Directory name is required")
+            sys.exit(1)
 
-    return branch, dir_name
+    return branch, final_dir_name
+
+
+def is_port_available(port):
+    """Check if a port is actually free on localhost."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(('localhost', port))
+            return True
+        except OSError:
+            return False
+
+
+def assign_port(branch):
+    """Assign a port for the worktree's dev server.
+
+    - main branch always gets 5173 (Vite default)
+    - Other worktrees get random port in 10000-60000 range
+    - Verifies port is actually available via socket check
+    """
+    # Special case: main always uses default Vite port
+    if branch == 'main':
+        return 5173
+
+    # For other worktrees: find an available random port
+    max_attempts = 10
+    for _ in range(max_attempts):
+        port = random.randint(10000, 60000)
+
+        if is_port_available(port):
+            return port
+
+    # Fallback: if we can't find a random port, try sequential from 10000
+    for port in range(10000, 11000):
+        if is_port_available(port):
+            return port
+
+    raise Exception("Could not find an available port after checking 1000+ ports")
+
+
+def create_env_file(wt_dir, port):
+    """Create .env.local file with port configuration for Vite and Playwright."""
+    env_path = wt_dir / '.env.local'
+
+    env_content = f"""# Auto-generated by setup-worktree.py
+# This file configures the dev server port and Playwright baseURL
+# to enable parallel development across multiple worktrees
+
+VITE_PORT={port}
+BASE_URL=http://localhost:{port}
+"""
+
+    with open(env_path, 'w') as f:
+        f.write(env_content)
+
+    print(f"  Created .env.local with port {port}")
 
 
 def create_worktree(repo_root, source_path, branch, dir_name, include_local_changes):
@@ -284,6 +433,7 @@ def validate_and_fix_gitignore(wt_dir):
         '.claude/settings.local.json',
         '.claude/agents',
         '.claude/skills',
+        '.env.local',
     }
 
     # Entries that must NOT be in .gitignore
@@ -365,11 +515,12 @@ def install_dependencies(wt_dir):
     return True
 
 
-def print_success_message(dir_name, branch):
+def print_success_message(dir_name, branch, port):
     """Print success message with next steps."""
     print()
     print(f"Worktree created successfully: wt/{dir_name}")
     print(f"   Branch: {branch}")
+    print(f"   Port: {port}")
     print()
     print("Shared items symlinked:")
     print("  - CLAUDE.md (project context)")
@@ -380,16 +531,24 @@ def print_success_message(dir_name, branch):
     print("  - .claude/skills/")
     print("  - .claude/agents/")
     print()
+    print("Environment configured:")
+    print(f"  - .env.local created with VITE_PORT={port}")
+    print(f"  - Dev server will run on http://localhost:{port}")
+    print(f"  - Playwright tests will use http://localhost:{port}")
+    print()
     print("Next steps:")
     print(f"  cd wt/{dir_name}")
     print("  code .              # Open in VS Code")
-    print("  npm run dev         # Start dev server")
+    print(f"  npm run dev         # Start dev server on port {port}")
     print("  claude              # Start Claude Code")
     print()
 
 
 def main():
     """Main script execution."""
+    # Parse CLI arguments
+    args = parse_arguments()
+
     # Get repository root
     repo_root = get_repo_root()
 
@@ -401,24 +560,30 @@ def main():
         print("You need at least one worktree to branch from")
         sys.exit(1)
 
-    # Select source worktree
-    source_wt = select_source_worktree(worktrees)
+    # Select source worktree (CLI arg or interactive)
+    source_wt = select_source_worktree(worktrees, args.source_worktree)
     source_path = Path(source_wt['path'])
     source_branch = source_wt['branch']
 
     print(f"\nSelected: {source_branch}")
 
-    # Pull and check for local changes
-    include_local = pull_and_check_status(source_path)
+    # Pull and check for local changes (respecting --exclude-changes flag)
+    include_local = pull_and_check_status(source_path, args.exclude_changes)
 
-    # Get new branch details
-    branch, dir_name = get_branch_details()
+    # Get new branch details (CLI args or interactive)
+    branch, dir_name = get_branch_details(args.branch_name, args.dir_name)
+
+    # Assign port for this worktree
+    port = assign_port(branch)
 
     # Create worktree
     wt_dir = create_worktree(repo_root, source_path, branch, dir_name, include_local)
 
     # Create symlinks
     create_symlinks(wt_dir, repo_root)
+
+    # Create .env.local with port configuration
+    create_env_file(wt_dir, port)
 
     # Validate and fix .gitignore
     validate_and_fix_gitignore(wt_dir)
@@ -427,7 +592,7 @@ def main():
     install_dependencies(wt_dir)
 
     # Print success message
-    print_success_message(dir_name, branch)
+    print_success_message(dir_name, branch, port)
 
 
 if __name__ == '__main__':

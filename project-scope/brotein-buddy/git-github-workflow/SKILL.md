@@ -24,8 +24,9 @@ This skill includes bundled resources in standard subdirectories:
 
 **Requirements for setup-worktree.py script:**
 - Must be run from the `bbud` conda environment
-- Use the full path to the Python interpreter: `/Users/nik/miniconda3/envs/bbud/bin/python`
+- Use the Python interpreter from your bbud environment: `<python-path>`
 - Script is interactive and will prompt for branch and directory names
+- See README.md in this skill directory for setup details
 
 ## When to Use
 
@@ -64,7 +65,7 @@ Use the `setup-worktree.py` script to create a new worktree. The script is inter
 
 **Command:**
 ```bash
-/Users/nik/miniconda3/envs/bbud/bin/python .claude/skills/git-github-workflow/scripts/setup-worktree.py
+<python-path> .claude/skills/git-github-workflow/scripts/setup-worktree.py
 ```
 
 **Interactive prompts:**
@@ -84,18 +85,48 @@ Branch: bug/123-fix-inventory       → Directory: 123-fix-inventory
 1. Finds repository root and verifies `.shared/` directory exists
 2. Pulls latest changes from the selected source worktree
 3. Creates new git branch from the source branch
-4. Creates worktree at `wt/<directory-name>` tracking `<branch-name>`
-5. Symlinks shared files (CLAUDE.md, CLAUDE_CONTEXT.md, .planning, .scratch)
-6. Symlinks `.claude/` directory (settings.local.json, skills/, agents/)
-7. Validates and updates `.gitignore` with required entries
-8. Runs `npm install` to install dependencies
+4. Assigns unique port for dev server (main=5173, others=random 10000-60000)
+5. Creates worktree at `wt/<directory-name>` tracking `<branch-name>`
+6. Symlinks shared files (CLAUDE.md, CLAUDE_CONTEXT.md, .planning, .scratch)
+7. Symlinks `.claude/` directory (settings.local.json, skills/, agents/)
+8. Creates `.env.local` with VITE_PORT and BASE_URL for parallel development
+9. Validates and updates `.gitignore` with required entries (including .env.local)
+10. Runs `npm install` to install dependencies
 
 **Result:**
 - Local directory: `wt/<directory-name>` (clean, short name)
 - Git branch: `<branch-name>` (full name with prefix for GitHub)
+- Unique port assigned in `.env.local` (enables parallel dev servers without conflicts)
 - All dependencies installed and ready to work
 
-**Note:** The script must be run with the bbud conda environment Python interpreter. Do not use `conda activate` in bash commands - instead use the full path to the Python executable as shown above.
+**Note:** The script must be run with the bbud conda environment Python interpreter. Do not use `conda activate` in bash commands - instead use the full path to the Python executable (represented as `<python-path>` in this documentation).
+
+## Port Assignment for Parallel Development
+
+The script automatically assigns unique ports to each worktree to enable running multiple dev servers simultaneously without port conflicts.
+
+**Port Assignment Strategy:**
+- `main` worktree: Always uses port 5173 (Vite default)
+- All other worktrees: Random port in range 10000-60000
+- Port availability verified via socket check before assignment
+- Configuration stored in `.env.local` (not committed to git)
+
+**How It Works:**
+- `vite.config.ts` reads `VITE_PORT` from environment to set dev server port
+- `playwright.config.ts` reads `BASE_URL` from environment for E2E tests
+- `.env.local` provides both values automatically per worktree
+- No manual configuration needed - just run `npm run dev` and `npm run test:e2e`
+
+**Benefits:**
+- Run dev servers in multiple worktrees simultaneously (e.g., main + 2 features)
+- Run E2E tests in parallel across worktrees
+- No port collision with other projects
+- Zero cognitive load - everything just works
+
+**To find a worktree's assigned port:**
+```bash
+cat .env.local  # Shows VITE_PORT and BASE_URL
+```
 
 ## Branch Naming Conventions
 
@@ -167,7 +198,7 @@ This section defines all steps from initial PR creation through merge, including
 #### 2. Ensure All CI/CD Checks Pass
 - Monitor: `gh pr checks <pr-number>`
 - Verify all tests pass, linting passes, build succeeds
-- Use bbud conda environment for local verification: `/Users/nik/miniconda3/envs/bbud/bin/python -m pytest`
+- Use bbud conda environment for local verification: `<python-path> -m pytest`
 - See references/ci-cd-monitoring.md for detailed monitoring procedures
 
 #### 3. Invoke code-reviewer Agent
@@ -268,7 +299,7 @@ gh run view <run-id>          # Detailed run information
 - Before merging
 
 **Common checks:**
-- Tests (must run in bbud conda environment: `/Users/nik/miniconda3/envs/bbud/bin/python -m pytest`)
+- Tests (must run in bbud conda environment: `<python-path> -m pytest`)
 - Linting (`npm run lint`)
 - Type checking (`npx tsc`)
 - Build (`npm run build`)
@@ -295,7 +326,7 @@ This workflow depends on several other skills that must be explicitly invoked at
 
 ## Quick Reference
 
-**Create worktree:** `/Users/nik/miniconda3/envs/bbud/bin/python .claude/skills/git-github-workflow/scripts/setup-worktree.py` (interactive)
+**Create worktree:** `<python-path> .claude/skills/git-github-workflow/scripts/setup-worktree.py` (interactive)
 **Commit:** Make many small commits, test before pushing
 **PR:** Use `gh pr create`, ensure tests pass
 **Merge:** Squash merge only

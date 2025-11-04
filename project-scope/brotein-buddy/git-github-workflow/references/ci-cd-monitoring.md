@@ -185,7 +185,7 @@ npm run test:unit
 
 **Important:** Run tests in bbud conda environment:
 ```bash
-/Users/nik/miniconda3/envs/bbud/bin/python -m pytest
+<python-path> -m pytest
 ```
 
 **Common issues:**

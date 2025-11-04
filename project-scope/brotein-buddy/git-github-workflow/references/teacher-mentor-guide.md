@@ -83,8 +83,8 @@ Code reviews provide:
 ### 5. Environment Context
 
 Inform the agent about the bbud conda environment:
-- If the agent needs to run any scripts, use `/Users/nik/miniconda3/envs/bbud/bin/python`
-- Tests can be run via `/Users/nik/miniconda3/envs/bbud/bin/python -m pytest`
+- If the agent needs to run any scripts, use `<python-path>`
+- Tests can be run via `<python-path> -m pytest`
 - This ensures any verification happens in the correct environment
 
 ## What the Agent Should Focus On
@@ -186,7 +186,7 @@ Context to provide:
 2. Read the relevant section from .planning/PLAN.md (Section 2.4: Implement random selection)
 3. Review commit messages: git log main..HEAD (complete history)
 4. Read all code review files from .scratch/code-review-pr-42-*.md
-5. Environment: Use bbud conda environment (/Users/nik/miniconda3/envs/bbud/bin/python) if needed
+5. Environment: Use bbud conda environment (<python-path>) if needed
 
 Instructions for the agent:
 - Focus on the FINAL DELIVERED STATE, not the development story

@@ -106,7 +106,7 @@ Invoke the dependency-management skill
 ```
 
 **Key reminders for BroteinBuddy:**
-- Use bbud conda environment: `/Users/nik/miniconda3/envs/bbud/bin/python`
+- Use bbud conda environment: `<python-path>`
 - For Node.js: `npm install` (standard process)
 - Prefer established libraries over reinventing solutions
 
