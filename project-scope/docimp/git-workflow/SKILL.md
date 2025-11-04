@@ -94,7 +94,7 @@ This project uses **git worktrees** for all development. Each feature or issue g
 **Default workflow:** Use the helper script for all new features/issues:
 
 ```bash
-cd ~/Documents/Code/Polygot/docimp
+cd <project-root>
 scripts/create-worktree.sh <worktree-name> <branch-name>
 
 # Example for new feature:
@@ -120,7 +120,7 @@ When you discover a sub-issue while working on a feature:
 
 1. **Create a new worktree from the feature branch** (not main):
    ```bash
-   cd ~/Documents/Code/Polygot/.docimp-wt/issue-260
+   cd ../.docimp-wt/issue-260
    scripts/create-worktree.sh issue-260-fix-typo issue-260-fix-typo
    # Note: Script needs to be enhanced to support branching from non-main
    ```
@@ -140,7 +140,7 @@ When the feature is complete:
 
 1. **From the worktree**, push your branch:
    ```bash
-   cd ~/Documents/Code/Polygot/.docimp-wt/issue-260
+   cd ../.docimp-wt/issue-260
    git push -u origin issue-260-display-consistency
    ```
 
@@ -151,7 +151,7 @@ When the feature is complete:
 
 3. **After merge**, clean up:
    ```bash
-   cd ~/Documents/Code/Polygot/docimp  # Return to main repo
+   cd <project-root>                    # Return to main repo
    git checkout main && git pull        # Update main
    git worktree remove ../.docimp-wt/issue-260  # Remove worktree
    git branch -d issue-260-display-consistency  # Delete local branch
@@ -178,7 +178,7 @@ Use **squash and merge** to keep main history clean while preserving detailed de
 
 ```bash
 # Start new feature/issue (DEFAULT WORKFLOW)
-cd ~/Documents/Code/Polygot/docimp
+cd <project-root>
 scripts/create-worktree.sh issue-260 issue-260-display-consistency
 cd ../.docimp-wt/issue-260
 
@@ -191,7 +191,7 @@ git push
 gh pr create --title "..." --body "Fixes #260..."
 
 # After PR merged:
-cd ~/Documents/Code/Polygot/docimp
+cd <project-root>
 git checkout main && git pull
 git worktree remove ../.docimp-wt/issue-260 && git branch -d issue-260-display-consistency
 
@@ -206,7 +206,7 @@ The sections above cover the standard workflow. This section provides details ab
 ### Directory Structure
 
 ```
-~/Code/polygot/
+~/projects/
 ├── docimp/                    # Main repo (main branch)
 ├── .docimp-wt/               # Hidden worktrees directory
 │   ├── issue-221/            # Worktree branches
@@ -241,7 +241,7 @@ The `scripts/create-worktree.sh` script automates worktree creation:
 ### Manual Worktree Creation (Troubleshooting Only)
 
 ```bash
-cd ~/Documents/Code/Polygot/docimp
+cd <project-root>
 git checkout main && git pull
 mkdir -p ../.docimp-wt  # First time only
 git worktree add ../.docimp-wt/issue-XXX -b issue-XXX-description
@@ -262,7 +262,7 @@ ln -s ../../../.docimp-shared/.claude/settings.local.json .claude/settings.local
 If setting up shared files for the first time:
 
 ```bash
-cd ~/Documents/Code/Polygot/docimp
+cd <project-root>
 
 # Create shared directory
 mkdir -p ../.docimp-shared/.planning ../.docimp-shared/.scratch
@@ -294,13 +294,13 @@ Work on two independent issues simultaneously:
 
 ```bash
 # Terminal 1: Create and work on Issue #221
-cd ~/Documents/Code/Polygot/docimp
+cd <project-root>
 scripts/create-worktree.sh issue-221 issue-221-styleguides
 cd ../.docimp-wt/issue-221
 # Open in Claude Code instance 1
 
 # Terminal 2: Create and work on Issue #243
-cd ~/Documents/Code/Polygot/docimp
+cd <project-root>
 scripts/create-worktree.sh issue-243 issue-243-api-timeout
 cd ../.docimp-wt/issue-243
 # Open in Claude Code instance 2
