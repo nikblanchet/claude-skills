@@ -96,9 +96,19 @@ def install_hooks() -> None:
         exit_with_error(f"install_hooks.py not found at {install_hooks_script}")
 
     try:
-        subprocess.run([sys.executable, str(install_hooks_script)], check=True)
-    except subprocess.CalledProcessError:
-        exit_with_error("Failed to install hooks")
+        result = subprocess.run(
+            [sys.executable, str(install_hooks_script)],
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        # Forward stdout (success messages from install_hooks.py)
+        if result.stdout:
+            print(result.stdout, end='')
+    except subprocess.CalledProcessError as e:
+        # Show detailed error message with stderr if available
+        error_msg = f"Failed to install hooks: {e.stderr.strip()}" if e.stderr else "Failed to install hooks"
+        exit_with_error(error_msg)
 
 
 def prompt_install_hooks() -> None:
