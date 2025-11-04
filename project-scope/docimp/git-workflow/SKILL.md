@@ -95,10 +95,13 @@ This project uses **git worktrees** for all development. Each feature or issue g
 
 ```bash
 cd <project-root>
-scripts/create-worktree.sh <worktree-name> <branch-name>
+python3 scripts/create_worktree.py <worktree-name> <branch-name>
 
 # Example for new feature:
-scripts/create-worktree.sh issue-260 issue-260-display-consistency
+python3 scripts/create_worktree.py issue-260 issue-260-display-consistency
+
+# Auto-install hooks if missing (no prompt):
+python3 scripts/create_worktree.py issue-260 issue-260-display-consistency --install-hooks-if-missing
 ```
 
 The script automatically:
@@ -106,6 +109,7 @@ The script automatically:
 - Creates worktree in `../.docimp-wt/<worktree-name>/`
 - Creates branch `<branch-name>`
 - Sets up all necessary symlinks (CLAUDE.md, .planning, .scratch, .claude/skills, .claude/settings.local.json)
+- Checks if git hooks are installed and prompts to install (or auto-installs with --install-hooks-if-missing flag)
 
 ### Branch Naming
 
@@ -121,7 +125,7 @@ When you discover a sub-issue while working on a feature:
 1. **Create a new worktree from the feature branch** (not main):
    ```bash
    cd ../.docimp-wt/issue-260
-   scripts/create-worktree.sh issue-260-fix-typo issue-260-fix-typo
+   python3 scripts/create_worktree.py issue-260-fix-typo issue-260-fix-typo
    # Note: Script needs to be enhanced to support branching from non-main
    ```
 
@@ -174,12 +178,88 @@ Use **squash and merge** to keep main history clean while preserving detailed de
 - Feature branches preserve detailed development history
 - Best of both worlds: detail during development, clarity in main
 
+## Protecting Main Branch
+
+Git hooks protect the main branch from accidental commits and branch checkouts. These hooks only affect the main worktree - feature worktrees remain unrestricted.
+
+### Installing Hooks
+
+Install hooks once when setting up the repository:
+
+```bash
+cd <project-root>
+python3 scripts/install_hooks.py
+```
+
+The `create_worktree.py` script automatically checks if hooks are installed and prompts to install them if missing. Use the `--install-hooks-if-missing` flag to auto-install without prompting.
+
+### What the Hooks Do
+
+**pre-commit hook:**
+- Blocks commits on the main branch in the main worktree
+- Displays error message with instructions to use worktrees
+- Feature worktrees unaffected
+
+**post-checkout hook:**
+- Blocks checking out branches other than main in the main worktree
+- Automatically reverts back to main branch
+- Displays error message with worktree creation instructions
+- Feature worktrees unaffected
+
+### Bypassing Hooks
+
+For maintenance tasks that legitimately require working on main:
+
+```bash
+git commit --no-verify  # Skip pre-commit hook
+```
+
+Use sparingly and only for necessary maintenance tasks.
+
+### Hook Behavior Examples
+
+**Blocked commit on main:**
+```bash
+cd <project-root>
+git checkout main
+echo "test" > file.txt
+git add file.txt
+git commit -m "Test"
+
+# Output:
+# ✗ COMMIT BLOCKED
+# Cannot commit on main branch in the main worktree.
+# Use: python3 scripts/create_worktree.py <name> <branch>
+```
+
+**Blocked branch checkout:**
+```bash
+cd <project-root>
+git checkout feature-branch
+
+# Output:
+# ✗ CHECKOUT BLOCKED
+# Cannot check out branch 'feature-branch' in the main worktree.
+# Automatically reverting to main branch...
+```
+
+**Allowed in feature worktree:**
+```bash
+cd ../.docimp-wt/issue-260
+git checkout -b hotfix  # Works fine
+git commit -m "Fix"     # Works fine
+```
+
 ## Quick Reference
 
 ```bash
+# Install hooks (one-time setup)
+cd <project-root>
+python3 scripts/install_hooks.py
+
 # Start new feature/issue (DEFAULT WORKFLOW)
 cd <project-root>
-scripts/create-worktree.sh issue-260 issue-260-display-consistency
+python3 scripts/create_worktree.py issue-260 issue-260-display-consistency
 cd ../.docimp-wt/issue-260
 
 # After completing a logical unit of work:
@@ -223,20 +303,27 @@ The sections above cover the standard workflow. This section provides details ab
 
 ### Helper Script Details
 
-The `scripts/create-worktree.sh` script automates worktree creation:
+The `scripts/create_worktree.py` script automates worktree creation:
 
 **What it does:**
 - Ensures you're on main and up-to-date
 - Creates the `../.docimp-wt/` directory if needed
 - Creates the new worktree with the specified branch
-- Creates all 6 necessary symlinks:
+- Creates all 7 necessary symlinks:
   - `CLAUDE.md` → `../../.docimp-shared/CLAUDE.md`
   - `CLAUDE_CONTEXT.md` → `../../.docimp-shared/CLAUDE_CONTEXT.md`
   - `.planning` → `../../.docimp-shared/.planning`
   - `.scratch` → `../../.docimp-shared/.scratch`
+  - `docs/patterns` → `../../../.docimp-shared/docs/patterns`
   - `.claude/skills` → `../../../.docimp-shared/.claude/skills`
   - `.claude/settings.local.json` → `../../../.docimp-shared/.claude/settings.local.json`
+- Checks if git hooks are installed and prompts to install (or auto-installs with `--install-hooks-if-missing`)
 - Provides confirmation with next steps
+
+**Arguments:**
+- `<worktree-name>`: Name of the worktree directory (e.g., issue-260)
+- `<branch-name>`: Name of the git branch (e.g., issue-260-display-consistency)
+- `--install-hooks-if-missing`: Auto-install hooks without prompting (optional)
 
 ### Manual Worktree Creation (Troubleshooting Only)
 
@@ -252,6 +339,8 @@ ln -s ../../.docimp-shared/CLAUDE.md CLAUDE.md
 ln -s ../../.docimp-shared/CLAUDE_CONTEXT.md CLAUDE_CONTEXT.md
 ln -s ../../.docimp-shared/.planning .planning
 ln -s ../../.docimp-shared/.scratch .scratch
+mkdir -p docs
+ln -s ../../../.docimp-shared/docs/patterns docs/patterns
 mkdir -p .claude
 ln -s ../../../.docimp-shared/.claude/skills .claude/skills
 ln -s ../../../.docimp-shared/.claude/settings.local.json .claude/settings.local.json
@@ -295,13 +384,13 @@ Work on two independent issues simultaneously:
 ```bash
 # Terminal 1: Create and work on Issue #221
 cd <project-root>
-scripts/create-worktree.sh issue-221 issue-221-styleguides
+python3 scripts/create_worktree.py issue-221 issue-221-styleguides
 cd ../.docimp-wt/issue-221
 # Open in Claude Code instance 1
 
 # Terminal 2: Create and work on Issue #243
 cd <project-root>
-scripts/create-worktree.sh issue-243 issue-243-api-timeout
+python3 scripts/create_worktree.py issue-243 issue-243-api-timeout
 cd ../.docimp-wt/issue-243
 # Open in Claude Code instance 2
 
