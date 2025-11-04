@@ -204,6 +204,7 @@ def main() -> int:
 
         # Root-level symlinks
         create_symlink('../../.docimp-shared/CLAUDE.md', worktree_path / 'CLAUDE.md')
+        create_symlink('../../.docimp-shared/CLAUDE.md', worktree_path / 'WARP.md')
         create_symlink('../../.docimp-shared/CLAUDE_CONTEXT.md', worktree_path / 'CLAUDE_CONTEXT.md')
         create_symlink('../../.docimp-shared/.planning', worktree_path / '.planning')
         create_symlink('../../.docimp-shared/.scratch', worktree_path / '.scratch')
@@ -243,6 +244,7 @@ def main() -> int:
     print()
     print_info("All symlinks created:")
     print("  ✓ CLAUDE.md → ../../.docimp-shared/CLAUDE.md")
+    print("  ✓ WARP.md → ../../.docimp-shared/CLAUDE.md")
     print("  ✓ CLAUDE_CONTEXT.md → ../../.docimp-shared/CLAUDE_CONTEXT.md")
     print("  ✓ .planning → ../../.docimp-shared/.planning")
     print("  ✓ .scratch → ../../.docimp-shared/.scratch")
