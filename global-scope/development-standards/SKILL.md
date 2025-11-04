@@ -1,41 +1,46 @@
 ---
 name: development-standards
-description: Developer-facing content standards and code quality principles - no emoji in code/docs/PRs/issues, use cutting-edge language features, write comprehensive documentation. Always-active standards applied to all development work.
+description: Standards enforced when writing code, creating pull requests, committing changes, or documenting features. CRITICAL - No emoji in developer-facing content (code/docs/PRs/issues/commits) or CLI output. Also defines standards for using cutting-edge language features and writing comprehensive documentation. Should be applied to all development work.
 ---
 
 # Development Standards
 
 Three core standards for all development work. These standards apply continuously and shape how code, documentation, and developer communications are written.
 
-## No Emoji in Developer-Facing Content
+## CRITICAL: Pre-Flight Checklist
+
+**Before writing any code, commit message, PR, or documentation, verify:**
+
+1. **NO EMOJI** - Zero colorful emoji presentation characters (✅ ❌ 🎉 🔧 🚀 📝 💡 ⚠️ 🐛 forbidden)
+   - Test: If it renders in color on a smartphone, don't use it
+   - Applies to: Code, commits, PRs, issues, docs, CLI/terminal output
+   - Emoticons are fine: :) :( ^_^ ¯\_(ツ)_/¯
+
+2. **Modern language features** - Use cutting-edge syntax when it improves clarity
+
+3. **Comprehensive documentation** - Write thorough docs as you code, not after
+
+## No Emoji in Developer-Facing Content or CLI Output
 
 **Critical rule**: Do not use colorful emoji presentation characters in developer-facing content. This signals "AI wrote this and a human didn't review it" and looks unprofessional.
 
-### Core Principle: Audience, Not Environment
+### Core Principle: Keep It Simple
 
-The determining factor is **who will see this content**, not whether it's rendered in monospace or variable-width fonts.
+**No emoji except in web UIs with variable-width fonts.**
 
-**Developer-facing content** → No emoji
-- Pull request descriptions (even though rendered in variable-width on GitHub)
-- Code comments and docstrings
-- README files
-- GitHub issues
-- Commit messages
-- Technical documentation
-- Any content primarily consumed by contributing developers
+**No emoji in:**
+- Developer-facing content: Code, PRs, commits, issues, READMEs, docs, comments
+- CLI/terminal output (even if end-user-facing)
+- Any monospace environment
 
-**End-user-facing content** (non-monospace environments) → Emoji acceptable
-- Web application UI
+**Emoji acceptable in:**
+- Web application UI (variable-width fonts only)
 - Marketing materials
-- End-user documentation
-- Customer-facing interfaces
+- Customer-facing web interfaces
 
-**End-user-facing content** (monospace environments) → No emoji
-- Terminal output
-- CLIs
-- Code displays
+**Exception**: When quoting or documenting something that contains emoji, preserve the emoji in the quote.
 
-**Exception that trumps everything**: When quoting or documenting something that contains emoji, use the emoji in the quote regardless of audience or environment.
+**Emoticons are always fine**: :) :( ^_^ ¯\_(ツ)_/¯ and other text-based emoticons are acceptable everywhere.
 
 ### Why This Matters
 
