@@ -4,3 +4,8 @@
 
 # Local machine-specific configuration
 .local/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
