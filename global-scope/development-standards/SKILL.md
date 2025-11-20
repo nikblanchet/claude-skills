@@ -235,3 +235,9 @@ def calculate_impact_score(complexity: int, audit_rating: Optional[int] = None) 
 ### Remember
 
 The docs are the product. Documentation is a feature, not a chore. Invest the time to do it well.
+
+## Language-Specific Quality Standards
+
+Beyond automated checks (Ruff, mypy, ESLint), higher-level design patterns apply to each language:
+
+**Python 3.13+:** See `references/python-313-conventions.md` for modern idiom enforcement covering typing design, API contracts, error handling, async patterns, control flow, data semantics, architectural cohesion, testing practices, maintainability, and ethical considerations. This guide addresses what automation cannot check - the semantic and design patterns that require understanding intent.
