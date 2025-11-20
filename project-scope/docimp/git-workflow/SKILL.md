@@ -95,21 +95,35 @@ This project uses **git worktrees** for all development. Each feature or issue g
 
 ```bash
 cd <project-root>
-python3 scripts/create_worktree.py <worktree-name> <branch-name>
+python3 .claude/skills/git-workflow/scripts/create_worktree.py <worktree-name> <branch-name>
 
-# Example for new feature:
-python3 scripts/create_worktree.py issue-260 issue-260-display-consistency
+# Example for new feature (branches from main):
+python3 .claude/skills/git-workflow/scripts/create_worktree.py issue-260 issue-260-display-consistency
 
-# Auto-install hooks if missing (no prompt):
-python3 scripts/create_worktree.py issue-260 issue-260-display-consistency --install-hooks-if-missing
+# Branch from a different source branch:
+python3 .claude/skills/git-workflow/scripts/create_worktree.py issue-200 fix-parser --source-branch issue-150
+
+# Exclude uncommitted/unpushed changes from source:
+python3 .claude/skills/git-workflow/scripts/create_worktree.py issue-200 fix-parser --source-branch issue-150 --exclude-changes
+
+# Include all changes from source (non-interactive):
+python3 .claude/skills/git-workflow/scripts/create_worktree.py issue-200 fix-parser --source-branch issue-150 --include-changes=all
+
+# Auto-install hooks if missing:
+python3 .claude/skills/git-workflow/scripts/create_worktree.py issue-260 issue-260-display-consistency --install-hooks-if-missing
 ```
 
-The script automatically:
-- Ensures main is up-to-date
-- Creates worktree in `../.docimp-wt/<worktree-name>/`
-- Creates branch `<branch-name>`
-- Sets up all necessary symlinks (CLAUDE.md, .planning, .scratch, .claude/skills, .claude/settings.local.json)
-- Checks if git hooks are installed and prompts to install (or auto-installs with --install-hooks-if-missing flag)
+The script automatically sets up symlinks, hooks, and dependencies. See script `--help` for full options.
+
+### Per-Worktree Python Environments
+
+Each worktree gets its own isolated Python virtual environment:
+
+- `.venv/` created via `uv venv` during worktree setup
+- `.envrc` copied from main repo for direnv integration
+- Run `direnv allow` to enable automatic activation
+- No shared state between worktrees (prevents lock contention)
+- Dependencies managed per-worktree with uv
 
 ### Branch Naming
 
@@ -124,9 +138,8 @@ When you discover a sub-issue while working on a feature:
 
 1. **Create a new worktree from the feature branch** (not main):
    ```bash
-   cd ../.docimp-wt/issue-260
-   python3 scripts/create_worktree.py issue-260-fix-typo issue-260-fix-typo
-   # Note: Script needs to be enhanced to support branching from non-main
+   cd <project-root>
+   python3 .claude/skills/git-workflow/scripts/create_worktree.py issue-260-fix issue-260-fix --source-branch issue-260
    ```
 
 2. **Address the sub-issue** using frequent commits
@@ -303,27 +316,13 @@ The sections above cover the standard workflow. This section provides details ab
 
 ### Helper Script Details
 
-The `scripts/create_worktree.py` script automates worktree creation:
+The `create_worktree.py` script automates worktree creation. See script docstring for full documentation.
 
-**What it does:**
-- Ensures you're on main and up-to-date
-- Creates the `../.docimp-wt/` directory if needed
-- Creates the new worktree with the specified branch
-- Creates all 7 necessary symlinks:
-  - `CLAUDE.md` → `../../.docimp-shared/CLAUDE.md`
-  - `CLAUDE_CONTEXT.md` → `../../.docimp-shared/CLAUDE_CONTEXT.md`
-  - `.planning` → `../../.docimp-shared/.planning`
-  - `.scratch` → `../../.docimp-shared/.scratch`
-  - `docs/patterns` → `../../../.docimp-shared/docs/patterns`
-  - `.claude/skills` → `../../../.docimp-shared/.claude/skills`
-  - `.claude/settings.local.json` → `../../../.docimp-shared/.claude/settings.local.json`
-- Checks if git hooks are installed and prompts to install (or auto-installs with `--install-hooks-if-missing`)
-- Provides confirmation with next steps
-
-**Arguments:**
-- `<worktree-name>`: Name of the worktree directory (e.g., issue-260)
-- `<branch-name>`: Name of the git branch (e.g., issue-260-display-consistency)
-- `--install-hooks-if-missing`: Auto-install hooks without prompting (optional)
+**Key flags:**
+- `--source-branch SOURCE`: Branch to create from (default: main)
+- `--include-changes {none,uncommitted,unpushed,all}`: Include changes from source worktree
+- `--exclude-changes`: Exclude all changes from source worktree
+- `--install-hooks-if-missing`: Auto-install hooks without prompting
 
 ### Manual Worktree Creation (Troubleshooting Only)
 
