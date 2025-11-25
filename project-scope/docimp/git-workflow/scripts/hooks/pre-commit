@@ -23,9 +23,10 @@ fi
 # Get the absolute path of the current worktree
 current_worktree=$(git rev-parse --show-toplevel)
 
-# Get list of all worktrees and check if current is the main worktree
-# The main worktree is the one that doesn't have "/.docimp-wt/" in its path
-if [[ ! "$current_worktree" =~ /.docimp-wt/ ]]; then
+# Get worktree directory name to check if it's the main worktree
+# The main worktree is the directory named "main"
+worktree_basename=$(basename "$current_worktree")
+if [[ "$worktree_basename" == "main" ]]; then
     # We're in the main worktree - block the commit
     echo ""
     echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
