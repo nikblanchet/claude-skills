@@ -33,7 +33,9 @@ fi
 current_worktree=$(git rev-parse --show-toplevel)
 
 # Check if we're in the main worktree (not a feature worktree)
-if [[ ! "$current_worktree" =~ /.docimp-wt/ ]]; then
+# The main worktree is the directory named "main"
+worktree_basename=$(basename "$current_worktree")
+if [[ "$worktree_basename" == "main" ]]; then
     # We're in the main worktree and not on main branch - block this!
     echo ""
     echo -e "${RED}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

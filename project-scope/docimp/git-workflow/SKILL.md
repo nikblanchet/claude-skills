@@ -309,14 +309,9 @@ The `scripts/create_worktree.py` script automates worktree creation:
 - Ensures you're on main and up-to-date
 - Creates the `../.docimp-wt/` directory if needed
 - Creates the new worktree with the specified branch
-- Creates all 7 necessary symlinks:
-  - `CLAUDE.md` → `../../.docimp-shared/CLAUDE.md`
-  - `CLAUDE_CONTEXT.md` → `../../.docimp-shared/CLAUDE_CONTEXT.md`
-  - `.planning` → `../../.docimp-shared/.planning`
-  - `.scratch` → `../../.docimp-shared/.scratch`
-  - `docs/patterns` → `../../../.docimp-shared/docs/patterns`
-  - `.claude/skills` → `../../../.docimp-shared/.claude/skills`
-  - `.claude/settings.local.json` → `../../../.docimp-shared/.claude/settings.local.json`
+- Creates all necessary symlinks to shared files and directories
+  - Run `python3 scripts/create_worktree.py --list-symlinks` to see the complete list
+  - Key symlinks include: `CLAUDE.md`, `CLAUDE_CONTEXT.md`, `.planning`, `.scratch`, `docs/patterns`, `.claude/skills`, `.claude/agents`, `.claude/settings.local.json`
 - Checks if git hooks are installed and prompts to install (or auto-installs with `--install-hooks-if-missing`)
 - Provides confirmation with next steps
 
@@ -324,16 +319,26 @@ The `scripts/create_worktree.py` script automates worktree creation:
 - `<worktree-name>`: Name of the worktree directory (e.g., issue-260)
 - `<branch-name>`: Name of the git branch (e.g., issue-260-display-consistency)
 - `--install-hooks-if-missing`: Auto-install hooks without prompting (optional)
+- `--list-symlinks`: List all symlinks that would be created and exit (optional)
 
 ### Manual Worktree Creation (Troubleshooting Only)
 
+**Note:** Manual worktree creation is not recommended. Always use `scripts/create_worktree.py` to ensure consistency and avoid missing symlinks.
+
+If you must create a worktree manually (troubleshooting only):
+
 ```bash
 cd <project-root>
+
+# Use the script instead - it handles all symlinks automatically
+python3 scripts/create_worktree.py issue-XXX issue-XXX-description
+
+# Or if you absolutely must do it manually:
 git checkout main && git pull
 mkdir -p ../.docimp-wt  # First time only
 git worktree add ../.docimp-wt/issue-XXX -b issue-XXX-description
 
-# Create symlinks in new worktree
+# Create symlinks (run from new worktree directory)
 cd ../.docimp-wt/issue-XXX
 ln -s ../../.docimp-shared/CLAUDE.md CLAUDE.md
 ln -s ../../.docimp-shared/CLAUDE_CONTEXT.md CLAUDE_CONTEXT.md
@@ -343,6 +348,7 @@ mkdir -p docs
 ln -s ../../../.docimp-shared/docs/patterns docs/patterns
 mkdir -p .claude
 ln -s ../../../.docimp-shared/.claude/skills .claude/skills
+ln -s ../../../.docimp-shared/.claude/agents .claude/agents
 ln -s ../../../.docimp-shared/.claude/settings.local.json .claude/settings.local.json
 ```
 
