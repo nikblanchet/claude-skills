@@ -9,8 +9,17 @@ This script automates the entire worktree setup process:
 - Enables direnv
 - Optionally installs git hooks
 
-Usage: create_worktree.py <worktree-name> <branch-name> [--install-hooks-if-missing]
-Example: create_worktree.py issue-221 issue-221-improve-styleguides
+Usage:
+    # CLI mode (all options via command line)
+    create_worktree.py <worktree-name> <branch-name> [--base-branch main]
+
+    # Interactive mode (prompts for all options)
+    create_worktree.py --interactive
+
+Examples:
+    create_worktree.py issue-221 issue-221-improve-styleguides
+    create_worktree.py -i
+    create_worktree.py feature-x feature-branch --base-branch develop
 """
 
 import argparse
@@ -18,6 +27,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from collections.abc import Callable
 from typing import NoReturn
 
 
@@ -128,6 +138,228 @@ def exit_with_error(message: str, show_help_hint: bool = True) -> NoReturn:
     if show_help_hint:
         print_info("Run with --help for usage information")
     sys.exit(1)
+
+
+def prompt_input(
+    prompt: str,
+    default: str | None = None,
+    validator: Callable[[str], bool] | None = None,
+    error_message: str = "Invalid input"
+) -> str:
+    """Prompt for user input with optional default and validation.
+
+    Args:
+        prompt: The prompt to display
+        default: Default value (shown in brackets, used if user presses Enter)
+        validator: Optional function that returns True if input is valid
+        error_message: Message to show when validation fails
+
+    Returns:
+        The validated user input or default value
+    """
+    prompt_text = f"{Colors.BLUE}{prompt}"
+    if default:
+        prompt_text += f" [{default}]"
+    prompt_text += f": {Colors.NC}"
+
+    while True:
+        user_input = input(prompt_text).strip()
+
+        # Use default if empty input
+        if not user_input and default:
+            return default
+        elif not user_input:
+            print_warning("Input required")
+            continue
+
+        # Validate if validator provided
+        if validator and not validator(user_input):
+            print_warning(error_message)
+            continue
+
+        return user_input
+
+
+def prompt_yes_no(prompt: str, default: bool = True) -> bool:
+    """Prompt for yes/no input.
+
+    Args:
+        prompt: The prompt to display
+        default: Default value (True for yes, False for no)
+
+    Returns:
+        True for yes, False for no
+    """
+    default_hint = "Y/n" if default else "y/N"
+    prompt_text = f"{Colors.BLUE}{prompt} [{default_hint}]: {Colors.NC}"
+
+    while True:
+        user_input = input(prompt_text).strip().lower()
+
+        if not user_input:
+            return default
+        elif user_input in ('y', 'yes'):
+            return True
+        elif user_input in ('n', 'no'):
+            return False
+        else:
+            print_warning("Please enter 'y' or 'n'")
+
+
+def get_local_branches() -> list[str]:
+    """Get list of local branch names."""
+    try:
+        result = subprocess.run(
+            ['git', 'branch', '--format=%(refname:short)'],
+            capture_output=True, text=True, check=True
+        )
+        return [b.strip() for b in result.stdout.strip().split('\n') if b.strip()]
+    except subprocess.CalledProcessError:
+        return ['main']
+
+
+def branch_exists(branch_name: str) -> bool:
+    """Check if a branch already exists."""
+    result = subprocess.run(
+        ['git', 'show-ref', '--verify', '--quiet', f'refs/heads/{branch_name}'],
+        capture_output=True
+    )
+    return result.returncode == 0
+
+
+def worktree_path_exists(worktree_name: str) -> bool:
+    """Check if a worktree path already exists."""
+    worktree_path = Path('..') / worktree_name
+    return worktree_path.exists()
+
+
+def prompt_worktree_name(default: str | None = None) -> str:
+    """Prompt for worktree directory name with validation.
+
+    Args:
+        default: Default value from CLI args
+
+    Returns:
+        Valid worktree name that doesn't already exist
+    """
+    def validate(name: str) -> bool:
+        if worktree_path_exists(name):
+            print_warning(f"Worktree already exists at ../{name}")
+            return False
+        return True
+
+    return prompt_input(
+        "Worktree directory name",
+        default=default,
+        validator=validate,
+        error_message="Please choose a different name"
+    )
+
+
+def prompt_branch_name(worktree_name: str, default: str | None = None) -> str:
+    """Prompt for branch name with validation.
+
+    Args:
+        worktree_name: Worktree name to suggest as default
+        default: Default value from CLI args (takes precedence over worktree_name)
+
+    Returns:
+        Valid branch name that doesn't already exist
+    """
+    suggested_default = default or worktree_name
+
+    def validate(name: str) -> bool:
+        if branch_exists(name):
+            print_warning(f"Branch '{name}' already exists")
+            return False
+        return True
+
+    return prompt_input(
+        "Git branch name",
+        default=suggested_default,
+        validator=validate,
+        error_message="Please choose a different branch name"
+    )
+
+
+def prompt_base_branch(default: str | None = None) -> str:
+    """Prompt for base branch with validation.
+
+    Args:
+        default: Default value from CLI args
+
+    Returns:
+        Valid base branch name that exists
+    """
+    branches = get_local_branches()
+    suggested_default = default or 'main'
+
+    # Show available branches
+    print_info(f"Available branches: {', '.join(branches[:10])}")
+    if len(branches) > 10:
+        print_info(f"  ... and {len(branches) - 10} more")
+
+    def validate(name: str) -> bool:
+        if name not in branches:
+            print_warning(f"Branch '{name}' does not exist")
+            return False
+        return True
+
+    return prompt_input(
+        "Base branch to create from",
+        default=suggested_default,
+        validator=validate,
+        error_message="Please choose an existing branch"
+    )
+
+
+def run_interactive_prompts(args) -> None:
+    """Run interactive prompts to populate args.
+
+    Args:
+        args: Parsed argparse namespace to populate
+    """
+    print()
+    print_info("=== Interactive Worktree Setup ===")
+    print()
+
+    # Prompt for worktree name
+    args.worktree_name = prompt_worktree_name(default=args.worktree_name)
+
+    # Prompt for branch name (suggest worktree name as default)
+    args.branch_name = prompt_branch_name(
+        args.worktree_name,
+        default=args.branch_name
+    )
+
+    # Prompt for base branch
+    args.base_branch = prompt_base_branch(default=args.base_branch)
+
+    # Prompt for verbose mode
+    print()
+    args.verbose = prompt_yes_no("Enable verbose output?", default=False)
+
+    # Prompt for hooks installation
+    args.install_hooks_if_missing = prompt_yes_no(
+        "Auto-install git hooks if missing?",
+        default=True
+    )
+
+    # Show confirmation summary
+    print()
+    print_info("=== Configuration Summary ===")
+    print(f"  Worktree directory: ../{args.worktree_name}")
+    print(f"  Branch name:        {args.branch_name}")
+    print(f"  Base branch:        {args.base_branch}")
+    print(f"  Verbose mode:       {'Yes' if args.verbose else 'No'}")
+    print(f"  Auto-install hooks: {'Yes' if args.install_hooks_if_missing else 'No'}")
+    print()
+
+    if not prompt_yes_no("Proceed with these settings?", default=True):
+        print_info("Aborted by user")
+        sys.exit(0)
+
+    print()
 
 
 def run_git(*args: str, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
@@ -402,7 +634,10 @@ def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
         description='Create a fully configured git worktree for the docimp project (includes symlinks, Python venv, dependencies, and direnv)',
-        epilog='Example: create_worktree.py issue-221 issue-221-improve-styleguides\n\n'
+        epilog='Examples:\n'
+               '  create_worktree.py issue-221 issue-221-improve-styleguides\n'
+               '  create_worktree.py --interactive\n'
+               '  create_worktree.py feature-x feature-branch --base-branch develop\n\n'
                'Note: For token efficiency, avoid --verbose unless debugging the script.\n'
                'The default output is concise and optimized for AI assistants.',
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -424,6 +659,16 @@ def main() -> int:
         action='store_true',
         help='Show detailed output and full tracebacks on error (increases token usage)'
     )
+    parser.add_argument(
+        '--interactive', '-i',
+        action='store_true',
+        help='Interactive mode: prompt for all options'
+    )
+    parser.add_argument(
+        '--base-branch',
+        default=None,
+        help='Base branch to create worktree from (default: main)'
+    )
 
     args = parser.parse_args()
 
@@ -439,24 +684,30 @@ def main() -> int:
             print()
         return 0
 
-    # Validate required arguments for worktree creation
-    if not args.worktree_name or not args.branch_name:
-        parser.error("worktree_name and branch_name are required (unless using --list-symlinks)")
-
     # Validate we're in the docimp repo and get the repo root
     repo_root = validate_docimp_repo()
 
-    # Change to repo root if we're in parent directory
+    # Change to repo root first (needed for interactive validation)
     if repo_root != Path('.'):
         if args.verbose:
             print_info(f"Changing to repository root: {repo_root}")
         import os
         os.chdir(repo_root)
 
-    # Ensure main is up to date
+    # Handle interactive mode
+    if args.interactive:
+        run_interactive_prompts(args)
+    elif not args.worktree_name or not args.branch_name:
+        parser.error("worktree_name and branch_name are required (use --interactive or --list-symlinks)")
+
+    # Set default base branch if not specified
+    if not args.base_branch:
+        args.base_branch = 'main'
+
+    # Ensure base branch is up to date
     if args.verbose:
-        print_info("Ensuring main branch is up to date...")
-    run_git('checkout', 'main')
+        print_info(f"Ensuring {args.base_branch} branch is up to date...")
+    run_git('checkout', args.base_branch)
     run_git('pull')
 
     # Create worktrees directory if needed
