@@ -1,414 +1,186 @@
 ---
 name: git-workflow
-description: Git worktree-based workflow for parallel development with shared context. Incremental commits after logical units, feature branches with nested issue branches, squash-merge to main. Use when creating/managing worktrees, working on parallel features, committing code, creating branches, or handling branch cleanup.
+description: Git worktree-based workflow for docimp project. This skill should be used when creating worktrees, committing code, working with GitHub issues/PRs, monitoring CI/CD, or cleaning up after merge. Covers the complete development lifecycle from worktree creation through cleanup.
 ---
 
 # Git Workflow
 
-Use incremental commits and feature branch workflow for all development work. Make commits frequently as logical units complete, and organize work using feature branches with nested issue branches.
+This project uses a bare-repo worktree structure where all branches (including main) exist as separate worktree directories. This enables parallel development across multiple Claude Code instances with shared context.
+
+## Repository Structure
+
+```
+docimp/
+├── .bare/                     # Bare git repository
+├── .git -> .bare              # Symlink for git commands at root
+├── .shared/                   # Shared untracked resources
+│   ├── .claude/
+│   ├── .planning/
+│   ├── .scratch/
+│   ├── CLAUDE.md
+│   └── CLAUDE_CONTEXT.md
+├── .claude -> .shared/.claude # Root-level symlinks for Claude Code
+├── main/                      # Main branch worktree
+├── issue-336/                 # Feature worktrees (siblings of main/)
+└── content-policy/
+```
+
+Key points:
+- All branches are worktrees, including `main`
+- Shared resources live in `.shared/` and are symlinked into each worktree
+- Each worktree has its own `.venv/` (not shared)
+- Run Python commands from within a worktree, not from repo root
+
+## Creating a Worktree
+
+**NEVER create worktrees manually.** Always use the script:
+
+```bash
+uv run python .claude/skills/git-workflow/scripts/create_worktree.py <worktree-name> <branch-name>
+
+# Example:
+uv run python .claude/skills/git-workflow/scripts/create_worktree.py issue-400 issue-400-fix-parser
+
+# Branch from non-main:
+uv run python .claude/skills/git-workflow/scripts/create_worktree.py hotfix hotfix-urgent --base-branch issue-400
+```
+
+The script path works from repo root or any worktree (via symlinks). Run `--help` for all options.
+
+The script automatically:
+- Creates the worktree with a new branch
+- Sets up all symlinks to shared resources
+- Creates Python virtual environment
+- Installs dependencies
+- Enables direnv
 
 ## Commit Workflow
 
-Make incremental commits as you work. Don't wait until everything is done.
+Make incremental commits as logical units complete. Every commit must leave the program in a working state.
 
-### Core Principle: Every Commit Must Leave the Program in a Good State
+### When to Commit
 
-**Required for every commit:**
+Commit after each logical unit of work is complete and working:
 - Tests pass
 - No broken functionality
 - Code runs without errors
 
-A commit should represent a complete, working increment of functionality - however small.
-
-### When to Commit
-
-**Commit after each logical unit of work is complete and working.**
-
-Don't batch up multiple changes before committing. Each commit should be a self-contained change that could be understood in isolation.
-
-#### Example: Display System Feature
-
-Instead of one large commit at the end:
-
-```
-Commit 1: Add IDisplay interface
-Commit 2: Add display dependencies to package.json
-Commit 3: Implement TerminalDisplay class
-Commit 4: Refactor command to inject display
-```
-
-Each commit is:
-- A complete unit of work
-- Independently understandable
-- In a working state (tests pass, code runs)
-
-### Push Early, Push Often
-
-- Push to remote ASAP after commits
-- Don't let work sit locally
-- Makes work visible and creates backups
-- Enables collaboration and early feedback
+Avoid batching multiple changes. Each commit should be self-contained and understandable in isolation.
 
 ### Commit Messages
 
-**Good commit messages:**
-- Use clear, descriptive language
-- Focus on "what" and "why" rather than just "how"
-- Use imperative mood ("Add feature" not "Added feature" or "Adds feature")
-- Follow project conventions if they exist
+- Use imperative mood: "Add feature" not "Added feature"
+- Focus on "what" and "why"
+- Be clear and descriptive
 
-**Examples:**
-- "Add IDisplay interface for terminal output abstraction"
-- "Implement incremental commit workflow in git-commit skill"
-- "Fix type validation in JSDoc plugin"
+### Push Early, Push Often
 
-### Remember: Squash and Merge Cleans Up Main
+Push to remote after commits. Avoid letting work sit locally.
 
-Feature branches show granular work with many small commits. When you squash and merge to main, the history is clean and focused. This means:
+## GitHub Issues
 
-- **On feature branches**: Commit frequently, keep commits small and focused
-- **On main**: Each merge represents a complete feature or fix
-- You get the best of both worlds: detailed history during development, clean history in main
+### When to Create Issues
 
-### What This Is Not
+Create a GitHub issue when:
+- Work requires tracking or discussion
+- Changes affect multiple components
+- Bug needs documentation for future reference
+- Feature request from user needs acknowledgment
 
-This is not:
-- Committing broken code ("I'll fix it in the next commit")
-- Committing work-in-progress that doesn't run
-- Holding off on commits until a feature is "perfect"
-- Making commits so large they include multiple unrelated changes
+Skip issue creation for:
+- Trivial fixes (typos, formatting)
+- Work already tracked elsewhere
 
-## Worktree-Based Development (DocImp Default)
-
-This project uses **git worktrees** for all development. Each feature or issue gets its own worktree (separate working directory) with its own branch.
-
-### Why Worktrees
-
-- **Parallel development**: Work on multiple features simultaneously in separate Claude Code instances
-- **Shared context**: Code reviews, planning docs, and runbooks accessible across all worktrees
-- **Clean isolation**: Each worktree has its own branch and working directory
-- **No context switching**: No need to stash changes when switching between features
-
-### Creating a New Worktree
-
-**Default workflow:** Use the helper script for all new features/issues:
+### Creating Issues
 
 ```bash
-cd <project-root>
-python3 scripts/create_worktree.py <worktree-name> <branch-name>
-
-# Example for new feature:
-python3 scripts/create_worktree.py issue-260 issue-260-display-consistency
-
-# Auto-install hooks if missing (no prompt):
-python3 scripts/create_worktree.py issue-260 issue-260-display-consistency --install-hooks-if-missing
+gh issue create --title "Brief description" --body "Detailed explanation..."
 ```
 
-The script automatically:
-- Ensures main is up-to-date
-- Creates worktree in `../.docimp-wt/<worktree-name>/`
-- Creates branch `<branch-name>`
-- Sets up all necessary symlinks (CLAUDE.md, .planning, .scratch, .claude/skills, .claude/settings.local.json)
-- Checks if git hooks are installed and prompts to install (or auto-installs with --install-hooks-if-missing flag)
+Check for duplicates first: `gh issue list --search "keyword"`
 
-### Branch Naming
+## Pull Requests
 
-- Use descriptive names that explain the work
-- Include issue number for traceability
-- **Good**: `issue-260-display-consistency`, `issue-221-improve-styleguides`
-- **Bad**: `feature-1`, `my-branch`, `updates`
+### Creating a PR
 
-### Nested Issue Branches
-
-When you discover a sub-issue while working on a feature:
-
-1. **Create a new worktree from the feature branch** (not main):
-   ```bash
-   cd ../.docimp-wt/issue-260
-   python3 scripts/create_worktree.py issue-260-fix-typo issue-260-fix-typo
-   # Note: Script needs to be enhanced to support branching from non-main
-   ```
-
-2. **Address the sub-issue** using frequent commits
-
-3. **Open a PR back to the feature branch** (not main)
-   - Keeps work organized
-   - Allows independent review of fixes
-   - Maintains clear history
-
-4. **Merge to feature branch**, then continue feature work in original worktree
-
-### Merging to Main
-
-When the feature is complete:
-
-1. **From the worktree**, push your branch:
-   ```bash
-   cd ../.docimp-wt/issue-260
-   git push -u origin issue-260-display-consistency
-   ```
-
-2. **Open a PR** to `main` using GitHub CLI or web interface:
-   ```bash
-   gh pr create --title "Fix progress display consistency" --body "Fixes #260..."
-   ```
-
-3. **After merge**, clean up:
-   ```bash
-   cd <project-root>                    # Return to main repo
-   git checkout main && git pull        # Update main
-   git worktree remove ../.docimp-wt/issue-260  # Remove worktree
-   git branch -d issue-260-display-consistency  # Delete local branch
-   # Remote branch kept for history
-   ```
-
-Use **squash and merge** to keep main history clean while preserving detailed development history on the feature branch.
-
-### Why Worktrees Work Better
-
-**vs. Traditional Branching:**
-- No need to stash/commit incomplete work when switching tasks
-- Each worktree has independent state (no conflicts)
-- Shared context files (code reviews, planning) accessible everywhere
-- Can run tests in one worktree while coding in another
-- Can run multiple instances of Claude Code in separate worktrees
-
-**Squash and merge:**
-- Main branch gets clean, focused history
-- Feature branches preserve detailed development history
-- Best of both worlds: detail during development, clarity in main
-
-## Protecting Main Branch
-
-Git hooks protect the main branch from accidental commits and branch checkouts. These hooks only affect the main worktree - feature worktrees remain unrestricted.
-
-### Installing Hooks
-
-Install hooks once when setting up the repository:
+From the worktree, push and create PR:
 
 ```bash
-cd <project-root>
-python3 scripts/install_hooks.py
+git push -u origin <branch-name>
+gh pr create --title "Description" --body "Fixes #123..."
 ```
 
-The `create_worktree.py` script automatically checks if hooks are installed and prompts to install them if missing. Use the `--install-hooks-if-missing` flag to auto-install without prompting.
+Link issues appropriately:
+- `Fixes #123` - auto-closes issue when PR merges
+- `See #123` - references without auto-closing
 
-### What the Hooks Do
+### CI/CD Monitoring
 
-**pre-commit hook:**
-- Blocks commits on the main branch in the main worktree
-- Displays error message with instructions to use worktrees
-- Feature worktrees unaffected
-
-**post-checkout hook:**
-- Blocks checking out branches other than main in the main worktree
-- Automatically reverts back to main branch
-- Displays error message with worktree creation instructions
-- Feature worktrees unaffected
-
-### Bypassing Hooks
-
-For maintenance tasks that legitimately require working on main:
+**Proactively monitor CI/CD checks after creating a PR.** Check status immediately without waiting for user prompting.
 
 ```bash
-git commit --no-verify  # Skip pre-commit hook
+# Check PR status
+gh pr checks
+
+# View specific check details
+gh pr view --json statusCheckRollup
 ```
 
-Use sparingly and only for necessary maintenance tasks.
+If checks fail:
+1. Read the failure logs
+2. Fix the issue
+3. Push fixes
+4. Re-check status
 
-### Hook Behavior Examples
+## Code Review
 
-**Blocked commit on main:**
+### When to Invoke Code Review
+
+Use the code-review agent before creating a PR for:
+- Significant new features
+- Complex refactoring
+- Security-sensitive changes
+
+For minor fixes, self-review is sufficient.
+
+### Responding to Review Feedback
+
+- Address all comments before requesting re-review
+- Push fixes as additional commits (for reviewability)
+- Mark conversations as resolved when addressed
+
+## Merging and Cleanup
+
+After PR is approved and merged:
+
 ```bash
-cd <project-root>
-git checkout main
-echo "test" > file.txt
-git add file.txt
-git commit -m "Test"
-
-# Output:
-# ✗ COMMIT BLOCKED
-# Cannot commit on main branch in the main worktree.
-# Use: python3 scripts/create_worktree.py <name> <branch>
+# From any worktree or repo root
+cd <repo-root>
+git fetch origin main:main          # Update local main
+git worktree remove <worktree-name> # Remove worktree
+git branch -d <branch-name>         # Delete local branch
 ```
 
-**Blocked branch checkout:**
-```bash
-cd <project-root>
-git checkout feature-branch
-
-# Output:
-# ✗ CHECKOUT BLOCKED
-# Cannot check out branch 'feature-branch' in the main worktree.
-# Automatically reverting to main branch...
-```
-
-**Allowed in feature worktree:**
-```bash
-cd ../.docimp-wt/issue-260
-git checkout -b hotfix  # Works fine
-git commit -m "Fix"     # Works fine
-```
+Use **squash and merge** to keep main history clean. Remote branches are kept for history.
 
 ## Quick Reference
 
 ```bash
-# Install hooks (one-time setup)
-cd <project-root>
-python3 scripts/install_hooks.py
-
-# Start new feature/issue (DEFAULT WORKFLOW)
-cd <project-root>
-python3 scripts/create_worktree.py issue-260 issue-260-display-consistency
-cd ../.docimp-wt/issue-260
-
-# After completing a logical unit of work:
-git add <files>
-git commit -m "Clear, descriptive message"
-git push
-
-# Feature complete?
-gh pr create --title "..." --body "Fixes #260..."
-
-# After PR merged:
-cd <project-root>
-git checkout main && git pull
-git worktree remove ../.docimp-wt/issue-260 && git branch -d issue-260-display-consistency
-
-# Check all worktrees:
+# List all worktrees
 git worktree list
-```
 
-## Advanced: Worktree Setup Details
+# Create new worktree (always use script!)
+uv run python .claude/skills/git-workflow/scripts/create_worktree.py <name> <branch>
 
-The sections above cover the standard workflow. This section provides details about the worktree infrastructure for troubleshooting or manual setup.
+# After logical unit complete
+git add <files> && git commit -m "Message" && git push
 
-### Directory Structure
+# Create PR
+gh pr create --title "..." --body "Fixes #..."
 
-```
-~/projects/
-├── docimp/                    # Main repo (main branch)
-├── .docimp-wt/               # Hidden worktrees directory
-│   ├── issue-221/            # Worktree branches
-│   └── issue-243/
-└── .docimp-shared/           # Shared gitignored files
-    ├── CLAUDE.md
-    ├── CLAUDE_CONTEXT.md
-    ├── .planning/
-    ├── .scratch/             # Code reviews, runbooks
-    └── .claude/
-        ├── skills/           # Shared skills
-        └── settings.local.json  # Shared local settings
-```
+# Check CI status
+gh pr checks
 
-### Helper Script Details
-
-The `scripts/create_worktree.py` script automates worktree creation:
-
-**What it does:**
-- Ensures you're on main and up-to-date
-- Creates the `../.docimp-wt/` directory if needed
-- Creates the new worktree with the specified branch
-- Creates all necessary symlinks to shared files and directories
-  - Run `python3 scripts/create_worktree.py --list-symlinks` to see the complete list
-  - Key symlinks include: `CLAUDE.md`, `CLAUDE_CONTEXT.md`, `.planning`, `.scratch`, `docs/patterns`, `.claude/skills`, `.claude/agents`, `.claude/settings.local.json`
-- Checks if git hooks are installed and prompts to install (or auto-installs with `--install-hooks-if-missing`)
-- Provides confirmation with next steps
-
-**Arguments:**
-- `<worktree-name>`: Name of the worktree directory (e.g., issue-260)
-- `<branch-name>`: Name of the git branch (e.g., issue-260-display-consistency)
-- `--install-hooks-if-missing`: Auto-install hooks without prompting (optional)
-- `--list-symlinks`: List all symlinks that would be created and exit (optional)
-
-### Manual Worktree Creation (Troubleshooting Only)
-
-**Note:** Manual worktree creation is not recommended. Always use `scripts/create_worktree.py` to ensure consistency and avoid missing symlinks.
-
-If you must create a worktree manually (troubleshooting only):
-
-```bash
-cd <project-root>
-
-# Use the script instead - it handles all symlinks automatically
-python3 scripts/create_worktree.py issue-XXX issue-XXX-description
-
-# Or if you absolutely must do it manually:
-git checkout main && git pull
-mkdir -p ../.docimp-wt  # First time only
-git worktree add ../.docimp-wt/issue-XXX -b issue-XXX-description
-
-# Create symlinks (run from new worktree directory)
-cd ../.docimp-wt/issue-XXX
-ln -s ../../.docimp-shared/CLAUDE.md CLAUDE.md
-ln -s ../../.docimp-shared/CLAUDE_CONTEXT.md CLAUDE_CONTEXT.md
-ln -s ../../.docimp-shared/.planning .planning
-ln -s ../../.docimp-shared/.scratch .scratch
-mkdir -p docs
-ln -s ../../../.docimp-shared/docs/patterns docs/patterns
-mkdir -p .claude
-ln -s ../../../.docimp-shared/.claude/skills .claude/skills
-ln -s ../../../.docimp-shared/.claude/agents .claude/agents
-ln -s ../../../.docimp-shared/.claude/settings.local.json .claude/settings.local.json
-```
-
-### Initial Shared Directory Setup (One-Time)
-
-If setting up shared files for the first time:
-
-```bash
-cd <project-root>
-
-# Create shared directory
-mkdir -p ../.docimp-shared/.planning ../.docimp-shared/.scratch
-
-# Move existing files to shared location
-mv CLAUDE.md ../.docimp-shared/ 2>/dev/null || true
-mv CLAUDE_CONTEXT.md ../.docimp-shared/ 2>/dev/null || true
-mv .planning/* ../.docimp-shared/.planning/ 2>/dev/null || true
-mv .scratch/* ../.docimp-shared/.scratch/ 2>/dev/null || true
-rmdir .planning .scratch 2>/dev/null || true
-
-# Create symlinks in main repo
-ln -s ../.docimp-shared/CLAUDE.md CLAUDE.md
-ln -s ../.docimp-shared/CLAUDE_CONTEXT.md CLAUDE_CONTEXT.md
-ln -s ../.docimp-shared/.planning .planning
-ln -s ../.docimp-shared/.scratch .scratch
-```
-
-### Benefits
-
-- **Parallel development**: Work on multiple issues simultaneously in separate Claude Code instances
-- **Shared context**: Code reviews, runbooks, and planning docs accessible across all worktrees
-- **Clean isolation**: Each worktree has its own branch and working directory
-- **Easy switching**: Open different worktrees in different windows/instances
-
-### Parallel Development Example
-
-Work on two independent issues simultaneously:
-
-```bash
-# Terminal 1: Create and work on Issue #221
-cd <project-root>
-python3 scripts/create_worktree.py issue-221 issue-221-styleguides
-cd ../.docimp-wt/issue-221
-# Open in Claude Code instance 1
-
-# Terminal 2: Create and work on Issue #243
-cd <project-root>
-python3 scripts/create_worktree.py issue-243 issue-243-api-timeout
-cd ../.docimp-wt/issue-243
-# Open in Claude Code instance 2
-
-# Both worktrees have access to:
-# - Shared code reviews in .scratch/
-# - Shared planning docs in .planning/
-# - Same project-specific skills in .claude/skills/
-# - Same local settings in .claude/settings.local.json
-```
-
-**Check all active worktrees:**
-
-```bash
-git worktree list
+# After merge
+git worktree remove <name> && git branch -d <branch>
 ```
