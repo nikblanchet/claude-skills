@@ -40,24 +40,27 @@ This skill should be used when:
 
 ## Worktree Structure
 
-BroteinBuddy uses a hybrid worktree structure for parallel development:
+BroteinBuddy uses a bare-repo worktree structure for parallel development:
 
 ```
-BroteinBuddy/               ← repo root (contains .git)
-├── wt/                     ← all worktrees live here
-│   ├── main/              ← main branch worktree
-│   ├── random-selection/  ← feature worktree (short name)
-│   └── inventory-mgmt/    ← another feature worktree
-└── .shared/               ← files shared across worktrees (not committed)
-    ├── CLAUDE.md         ← project context
-    ├── CLAUDE_CONTEXT.md ← confidential info
-    ├── .planning/        ← planning documents
-    ├── .scratch/         ← throwaway files
-    └── .claude/          ← Claude Code settings and skills
-        ├── settings.local.json
-        ├── skills/       ← symlinks to individual skills
-        └── agents/       ← symlinks to individual subagents
+BroteinBuddy/                         ← repo root
+├── .bare/                            ← bare git repository
+├── .git                              ← file (not dir) pointing to .bare
+├── .shared/                          ← files shared across worktrees (not committed)
+│   ├── CLAUDE.md                     ← project context
+│   ├── CLAUDE_CONTEXT.md             ← confidential info
+│   ├── .planning/                    ← planning documents
+│   ├── .scratch/                     ← throwaway files
+│   └── .claude/                      ← Claude Code settings and skills
+│       ├── settings.local.json
+│       ├── skills/                   ← symlinks to individual skills
+│       └── agents/                   ← symlinks to individual subagents
+├── main/                             ← main branch worktree
+├── feature-random-selection/         ← feature worktree (at root level)
+└── setup-skills-config/              ← setup worktree (at root level)
 ```
+
+**Note:** Local exclusions (symlinks, .shared/, etc.) are handled by `.bare/info/exclude`, not `.gitignore`. This keeps the tracked `.gitignore` clean of local setup details.
 
 ## Creating a New Worktree
 
@@ -72,13 +75,13 @@ Use the `setup-worktree.py` script to create a new worktree. The script is inter
 1. Select a source worktree to branch from (defaults to 'main')
 2. Pull latest changes from the source worktree
 3. Enter the branch name with prefix (e.g., `feature/random-selection`)
-4. Enter the directory name for `wt/` folder (e.g., `random-selection`)
+4. Enter the directory name (e.g., `feature-random-selection`)
 
 **Examples of branch/directory pairs:**
 ```
-Branch: setup/skills-and-subagents  → Directory: skills-and-subagents
-Branch: feature/random-selection    → Directory: random-selection
-Branch: bug/123-fix-inventory       → Directory: 123-fix-inventory
+Branch: setup/skills-and-subagents  → Directory: setup-skills-and-subagents
+Branch: feature/random-selection    → Directory: feature-random-selection
+Branch: bug/123-fix-inventory       → Directory: bug-123-fix-inventory
 ```
 
 **What the script does:**
@@ -86,18 +89,26 @@ Branch: bug/123-fix-inventory       → Directory: 123-fix-inventory
 2. Pulls latest changes from the selected source worktree
 3. Creates new git branch from the source branch
 4. Assigns unique port for dev server (main=5173, others=random 10000-60000)
-5. Creates worktree at `wt/<directory-name>` tracking `<branch-name>`
+5. Creates worktree at `<directory-name>/` (repo root level) tracking `<branch-name>`
 6. Symlinks shared files (CLAUDE.md, CLAUDE_CONTEXT.md, .planning, .scratch)
 7. Symlinks `.claude/` directory (settings.local.json, skills/, agents/)
 8. Creates `.env.local` with VITE_PORT and BASE_URL for parallel development
-9. Validates and updates `.gitignore` with required entries (including .env.local)
-10. Runs `npm install` to install dependencies
+9. Runs `npm install` to install dependencies
 
 **Result:**
-- Local directory: `wt/<directory-name>` (clean, short name)
+- Local directory: `<directory-name>/` (at repo root)
 - Git branch: `<branch-name>` (full name with prefix for GitHub)
 - Unique port assigned in `.env.local` (enables parallel dev servers without conflicts)
 - All dependencies installed and ready to work
+
+**CLI flags for non-interactive use:**
+- `--source-worktree <name>` - Source worktree to branch from
+- `--branch-name <name>` - New branch name
+- `--dir-name <name>` - Directory name for worktree
+- `--include-changes` - Include local changes without prompting
+- `--exclude-changes` - Exclude local changes without prompting
+
+When running non-interactively (no TTY), the script automatically includes local changes.
 
 **Note:** The script must be run with the bbud conda environment Python interpreter. Do not use `conda activate` in bash commands - instead use the full path to the Python executable (represented as `<python-path>` in this documentation).
 
@@ -147,13 +158,13 @@ Use these prefixes for branch names:
 
 ## Directory Naming for Worktrees
 
-Keep directory names in `wt/` short and clean by stripping the prefix:
+Directory names include the branch prefix (with `/` replaced by `-`):
 
 | Branch Name | Directory Name |
 |-------------|----------------|
-| `setup/skills-and-subagents` | `skills-and-subagents` |
-| `feature/random-selection` | `random-selection` |
-| `bug/123-fix-inventory` | `123-fix-inventory` |
+| `setup/skills-and-subagents` | `setup-skills-and-subagents` |
+| `feature/random-selection` | `feature-random-selection` |
+| `bug/123-fix-inventory` | `bug-123-fix-inventory` |
 
 ## Commit Workflow
 
@@ -232,7 +243,7 @@ This section defines all steps from initial PR creation through merge, including
 
 #### 8. Merge and Cleanup
 - Squash merge to main: `gh pr merge <pr-number> --squash`
-- Pull latest main: `cd wt/main && git pull`
+- Pull latest main: `cd main && git pull`
 - Remove worktree: `git worktree remove ../feature-name`
 - Delete branch: `git branch -d feature/feature-name`
 
@@ -274,7 +285,7 @@ gh pr merge <pr-number> --squash
 ## Post-Merge Cleanup
 
 ```bash
-cd wt/main
+cd main
 git pull
 git worktree remove ../feature-name
 git branch -d feature/feature-name
