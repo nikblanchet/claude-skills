@@ -30,7 +30,7 @@ Examples:
   ./setup-worktree.py
 
   # CLI mode (non-interactive)
-  ./setup-worktree.py --source-worktree main --branch-name feature/new-thing --dir-name new-thing
+  ./setup-worktree.py --source-worktree main --branch-name feature/new-thing --dir-name feature-new-thing
 
   # Hybrid mode (CLI with some interactive prompts)
   ./setup-worktree.py --source-worktree main --branch-name feature/new-thing
@@ -38,11 +38,24 @@ Examples:
   # Exclude local changes from source worktree
   ./setup-worktree.py --source-worktree main --exclude-changes
 
+  # Include local changes without prompting
+  ./setup-worktree.py --source-worktree main --include-changes
+
+Local changes behavior:
+  - Interactive mode: prompts user
+  - Non-interactive (no TTY): includes changes automatically
+  - --include-changes: includes without prompting
+  - --exclude-changes: excludes without prompting
+
 Branch naming conventions:
   - setup/name         -> for setup tasks
   - feature/name       -> for new features
   - bug/name           -> for bug fixes
   - bug/123-name       -> for bug fixes with issue number
+
+Directory naming convention:
+  - Include prefix in directory name (e.g., feature-new-thing, bug-123-fix)
+  - Worktrees are created at repo root level
         '''
     )
 
@@ -61,13 +74,19 @@ Branch naming conventions:
     parser.add_argument(
         '--dir-name',
         type=str,
-        help='Directory name for the worktree in wt/ folder (e.g., "new-thing"). If not provided, will prompt interactively.'
+        help='Directory name for the worktree at repo root (e.g., "new-thing"). If not provided, will prompt interactively.'
     )
 
     parser.add_argument(
         '--exclude-changes',
         action='store_true',
-        help='Exclude local changes from source worktree (default: include changes if they exist)'
+        help='Exclude local changes from source worktree (default: prompt if interactive, include if non-interactive)'
+    )
+
+    parser.add_argument(
+        '--include-changes',
+        action='store_true',
+        help='Include local changes from source worktree without prompting'
     )
 
     return parser.parse_args()
@@ -127,14 +146,14 @@ def get_worktrees():
             current_wt['branch'] = line.split('refs/heads/', 1)[1]
         elif line == '':
             if current_wt and 'branch' in current_wt:
-                # Exclude _root worktree
-                if not current_wt['path'].endswith('/_root') and not current_wt['path'].endswith('/BroteinBuddy'):
+                # Exclude bare repo (ends with .bare)
+                if not current_wt['path'].endswith('/.bare'):
                     worktrees.append(current_wt)
             current_wt = {}
 
     # Handle last worktree
     if current_wt and 'branch' in current_wt:
-        if not current_wt['path'].endswith('/_root') and not current_wt['path'].endswith('/BroteinBuddy'):
+        if not current_wt['path'].endswith('/.bare'):
             worktrees.append(current_wt)
 
     return worktrees
@@ -169,7 +188,7 @@ def select_source_worktree(worktrees, source_worktree_name=None):
         # Extract directory name from path
         dir_name = Path(path).name
 
-        print(f"  {i}. {branch} -> wt/{dir_name}/")
+        print(f"  {i}. {branch} -> {dir_name}/")
 
         if branch == 'main':
             main_index = i
@@ -193,7 +212,7 @@ def select_source_worktree(worktrees, source_worktree_name=None):
             print("Please enter a valid number")
 
 
-def pull_and_check_status(worktree_path, exclude_changes=False):
+def pull_and_check_status(worktree_path, exclude_changes=False, include_changes=False):
     """Pull from remote and check for conflicts or local changes."""
     print(f"\nPulling latest changes in {worktree_path}...")
 
@@ -226,6 +245,16 @@ def pull_and_check_status(worktree_path, exclude_changes=False):
             print("\nExcluding local changes (--exclude-changes flag set)")
             return False
 
+        # If --include-changes flag is set, automatically include without prompting
+        if include_changes:
+            print("\nIncluding local changes (--include-changes flag set)")
+            return True
+
+        # Check if running non-interactively (no TTY)
+        if not sys.stdin.isatty():
+            print("\nIncluding local changes (non-interactive mode)")
+            return True
+
         # Interactive mode - prompt user
         while True:
             choice = input("\nInclude these local changes in the new worktree? (y/n): ").strip().lower()
@@ -243,15 +272,15 @@ def get_branch_details(branch_name=None, dir_name=None):
     """Get branch name and directory name (CLI args or interactive)."""
     # If both provided via CLI, use them
     if branch_name and dir_name:
-        print(f"\nUsing branch: {branch_name} -> wt/{dir_name}/")
+        print(f"\nUsing branch: {branch_name} -> {dir_name}/")
         return branch_name, dir_name
 
     # Need to prompt for missing values
     print("\nEnter details for the new worktree:")
     print("Examples:")
-    print("  Branch: setup/skills-and-subagents  -> Directory: skills-and-subagents")
-    print("  Branch: feature/random-selection    -> Directory: random-selection")
-    print("  Branch: bug/123-fix-inventory       -> Directory: 123-fix-inventory")
+    print("  Branch: setup/skills-and-subagents  -> Directory: setup-skills-and-subagents")
+    print("  Branch: feature/random-selection    -> Directory: feature-random-selection")
+    print("  Branch: bug/123-fix-inventory       -> Directory: bug-123-fix-inventory")
     print()
 
     # Get branch name (use CLI arg or prompt)
@@ -267,9 +296,9 @@ def get_branch_details(branch_name=None, dir_name=None):
     # Get directory name (use CLI arg or prompt)
     if dir_name:
         final_dir_name = dir_name
-        print(f"Directory name (for wt/ folder): {final_dir_name} (from CLI)")
+        print(f"Directory name: {final_dir_name} (from CLI)")
     else:
-        final_dir_name = input("Directory name (for wt/ folder): ").strip()
+        final_dir_name = input("Directory name: ").strip()
         if not final_dir_name:
             print("Error: Directory name is required")
             sys.exit(1)
@@ -334,11 +363,11 @@ BASE_URL=http://localhost:{port}
 
 def create_worktree(repo_root, source_path, branch, dir_name, include_local_changes):
     """Create the new worktree."""
-    wt_dir = repo_root / 'wt' / dir_name
+    wt_dir = repo_root / dir_name
 
     # Check if worktree already exists
     if wt_dir.exists():
-        print(f"\nError: Worktree already exists at wt/{dir_name}")
+        print(f"\nError: Worktree already exists at {dir_name}/")
         sys.exit(1)
 
     # Create branch if needed
@@ -385,10 +414,10 @@ def create_symlinks(wt_dir, repo_root):
 
     # Create symlinks to root-level files
     symlinks = [
-        ('CLAUDE.md', '../../.shared/CLAUDE.md'),
-        ('CLAUDE_CONTEXT.md', '../../.shared/CLAUDE_CONTEXT.md'),
-        ('.planning', '../../.shared/.planning'),
-        ('.scratch', '../../.shared/.scratch'),
+        ('CLAUDE.md', '../.shared/CLAUDE.md'),
+        ('CLAUDE_CONTEXT.md', '../.shared/CLAUDE_CONTEXT.md'),
+        ('.planning', '../.shared/.planning'),
+        ('.scratch', '../.shared/.scratch'),
     ]
 
     for target, source in symlinks:
@@ -402,9 +431,9 @@ def create_symlinks(wt_dir, repo_root):
     claude_dir.mkdir(exist_ok=True)
 
     claude_symlinks = [
-        ('settings.local.json', '../../../.shared/.claude/settings.local.json'),
-        ('skills', '../../../.shared/.claude/skills'),
-        ('agents', '../../../.shared/.claude/agents'),
+        ('settings.local.json', '../../.shared/.claude/settings.local.json'),
+        ('skills', '../../.shared/.claude/skills'),
+        ('agents', '../../.shared/.claude/agents'),
     ]
 
     for target, source in claude_symlinks:
@@ -518,7 +547,7 @@ def install_dependencies(wt_dir):
 def print_success_message(dir_name, branch, port):
     """Print success message with next steps."""
     print()
-    print(f"Worktree created successfully: wt/{dir_name}")
+    print(f"Worktree created successfully: {dir_name}/")
     print(f"   Branch: {branch}")
     print(f"   Port: {port}")
     print()
@@ -537,7 +566,7 @@ def print_success_message(dir_name, branch, port):
     print(f"  - Playwright tests will use http://localhost:{port}")
     print()
     print("Next steps:")
-    print(f"  cd wt/{dir_name}")
+    print(f"  cd {dir_name}")
     print("  code .              # Open in VS Code")
     print(f"  npm run dev         # Start dev server on port {port}")
     print("  claude              # Start Claude Code")
@@ -567,8 +596,8 @@ def main():
 
     print(f"\nSelected: {source_branch}")
 
-    # Pull and check for local changes (respecting --exclude-changes flag)
-    include_local = pull_and_check_status(source_path, args.exclude_changes)
+    # Pull and check for local changes (respecting --exclude-changes and --include-changes flags)
+    include_local = pull_and_check_status(source_path, args.exclude_changes, args.include_changes)
 
     # Get new branch details (CLI args or interactive)
     branch, dir_name = get_branch_details(args.branch_name, args.dir_name)
