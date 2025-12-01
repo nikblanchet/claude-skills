@@ -444,7 +444,11 @@ def create_symlinks(wt_dir, repo_root):
 
 
 def validate_and_fix_gitignore(wt_dir):
-    """Validate and fix .gitignore entries."""
+    """Validate .gitignore doesn't have problematic entries.
+
+    Note: Symlink entries (CLAUDE.md, .planning, .scratch, .claude/*, .env.local)
+    are now handled by .bare/info/exclude and should NOT be in .gitignore.
+    """
     gitignore_path = wt_dir / '.gitignore'
 
     if not gitignore_path.exists():
@@ -453,17 +457,8 @@ def validate_and_fix_gitignore(wt_dir):
 
     print("\nValidating .gitignore...")
 
-    # Entries that MUST be in .gitignore
-    required_entries = {
-        'CLAUDE.md',
-        'CLAUDE_CONTEXT.md',
-        '.planning',
-        '.scratch',
-        '.claude/settings.local.json',
-        '.claude/agents',
-        '.claude/skills',
-        '.env.local',
-    }
+    # No required entries - symlinks are handled by .bare/info/exclude
+    required_entries = set()
 
     # Entries that must NOT be in .gitignore
     forbidden_entries = {
