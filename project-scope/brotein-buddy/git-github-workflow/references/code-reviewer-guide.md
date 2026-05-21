@@ -1,190 +1,126 @@
-# Code Reviewer Agent - Invocation Guide
+# Code Reviewer Agent — Invocation Guide
+
+The `code-reviewer` subagent runs under a **strict blinding contract**: it sees the diff and the existing codebase, nothing else. It never reads the PR description, planning docs, or commit messages, because authorial intent measurably biases the review.
+
+Canonical policy source: BroteinBuddy `CLAUDE.md`, "Process before every merge" step 4 and "Notes on the critique steps". This guide is the mechanics; that file is the policy.
 
 ## When to Invoke
 
-Invoke the code-reviewer agent at these points in the PR workflow:
+In the merge workflow, the code review runs at step 4 — after local checks pass, before any merge consideration.
 
-1. **Initial review:** After all tests pass and CI/CD checks succeed, before considering merge
-2. **Subsequent reviews:** After addressing non-trivial changes from previous code review feedback
-3. **Final verification:** Before invoking teacher-mentor agent (optional, if significant changes were made)
+1. `npm test` passes.
+2. `npm run lint` is clean.
+3. `npm run build` succeeds.
+4. Spawn a fresh `code-reviewer` subagent in a clean session.
 
-## Required Context to Provide
+Do not invoke before tests pass — a reviewer chewing on a broken build produces noise, not signal.
 
-When invoking the code-reviewer agent, provide comprehensive context:
+## What the Reviewer Sees (and What It Doesn't)
 
-### 1. Pull Request Information
+The contract is enumerated, not principled. There is no judgment call about whether a given input "counts" as intent.
 
-Fetch and provide the PR description and any comments:
+### Allow-list (read freely)
 
-```bash
-gh pr view <pr-number>
-```
+Inputs and actions that produce factual answers about the code as it exists on disk:
 
-Tell the agent to read the full PR description and comments thread.
+- The diff: `git diff main..HEAD`.
+- Any file in the working tree outside the deny-list.
+- Dependency source under `node_modules/`.
+- Test / type-check / build runs: `npm test`, `npm run lint`, `npm run build`.
+- Web searches for library and API documentation.
 
-### 2. Planning Context
+### Deny-list (forbidden inputs)
 
-Direct the agent to read the relevant section from `.planning/PLAN.md` that describes:
-- What this PR is intended to deliver
-- The step or phase being implemented
-- Any specific requirements or constraints
+Authorial intent and out-of-band context:
 
-### 3. Commit History
+- `gh pr view` — the PR description and comment thread.
+- Anything under `.planning/` or `.scratch/`.
+- `git log main..HEAD` and `git show` on any commit on the branch.
+- The conversation transcript that produced the code.
+- Prior fresh-context reviews of the same PR.
 
-Provide the full commit history for this branch:
+### Backstop clause
 
-```bash
-git log main..HEAD
-```
+If the reviewer feels it needs something from the deny-list to make a judgment, **that itself is a finding**: "intent is not legible from the diff and codebase alone." It is not a license to read the forbidden input. A guide that depends on the reviewer's discipline is a guide that has already failed; redact at the source.
 
-For subsequent reviews, emphasize that the agent should review the complete commit history to understand:
-- What was changed since the last review
-- How scope may have expanded
-- What enhancements were added
+## Why This Definition of Blind
 
-### 4. Environment Context
+Three sources motivate the contract.
 
-Inform the agent about the bbud conda environment:
-- Tests must be run using `<python-path> -m pytest`
-- Any Python scripts use the bbud environment
-- This ensures tests run correctly during the review process
+1. **Mitropoulos, Alexopoulos, Alexopoulos, and Spinellis (2026), "Measuring and Exploiting Contextual Bias in LLM-Assisted Security Code Review"** (arxiv 2603.18740v2). In their bias-injection study, redacting the PR description before passing the PR to an automated reviewer recovered detection in 12 of 17 missed cases (70%). Adding explicit instructions to ignore commit metadata recovered 4 more, raising overall detection to 16 of 17 (94%). The paper's conclusion: "Programmatically redacting bias elements is the safest approach" — instruction-based debiasing leaks because reviewers reference metadata anyway. Hence: redact at the source (this guide), do not rely on telling the model to ignore what it has been shown.
 
-### 5. Project Standards
+2. **McAleese et al. (2024), "LLM Critics Help Catch LLM Bugs" (CriticGPT, OpenAI)**. LLM critics catch real bugs that human reviewers miss. The wrinkle is calibration: context-rich critics carry a measurably higher false-positive rate, and false positives erode trust faster than missed bugs do. A blinded reviewer that finds fewer fake issues is more useful than a context-rich reviewer that finds more total issues but mixes in confident-sounding noise.
 
-Remind the agent to apply:
-- `brotein-buddy-standards` skill for project-specific requirements
-- `development-standards` skill for commit messages, code quality
-- `exhaustive-testing` skill for test coverage expectations
+3. **Anthropic Claude Code best practices**: "A fresh context improves code review since Claude won't be biased toward code it just wrote." The rule generalizes beyond Claude-authored code — any account of why the code looks the way it does primes the reviewer to rationalize rather than scrutinize.
 
 ## First Review vs Subsequent Reviews
 
-### First Review (Initial Code Review)
+Default: one pass.
 
-For the first code review on a PR:
+A second pass is permitted **only if the first surfaced structural objections that materially reshaped the PR** — a new file added, a function rewritten, a design choice reversed. A second pass is not appropriate when the only changes since pass one are tidying nits or fixing typos; those don't need a fresh review.
 
-**Scope:** Comprehensive review of all changes in the PR
-**Focus:**
-- Code quality across all 11 dimensions
-- Test coverage (90% overall, 100% critical paths)
-- Adherence to project standards
-- Security concerns
-- Performance considerations
-- Documentation completeness
+**Hard cap: two passes per PR.** A third pass is a sign the PR is wrong-sized; split it or accept the current state.
 
-**Instructions to agent:**
-- Read PR description and comments
-- Read relevant PLAN.md section
-- Review complete commit history
-- Run tests to verify they pass
-- Identify blockers, suggestions, and enhancements
+Each pass is its own fresh-context subagent invocation in a clean session. The harness does not carry prior conversation, including prior reviews, into a new subagent — "fresh context" already implies it, and no separate rule is needed.
 
-### Subsequent Reviews (2nd, 3rd, etc.)
+## Exit Signal
 
-When running a subsequent code review after addressing previous feedback:
+When the reviewer finds nothing meriting attention, it must explicitly say **"No material issues."** (capital N, period). That phrase is the green light.
 
-**Critical: Review the ENTIRE PR, not just changes since last review**
+The absence of findings is not the same as the presence of approval. A reviewer that returns a blank list might have failed to find issues for reasons unrelated to PR quality. The explicit signal forces the reviewer to commit.
 
-**Scope:** Full PR review with awareness of iteration history
-**Focus:**
-- How previous feedback was addressed
-- Whether new changes introduced issues
-- Whether scope expanded appropriately
-- Overall quality of the complete PR (not just deltas)
+Do not reward critics that invent issues to justify their turn. A correct review with nothing to flag is a useful review.
 
-**Instructions to agent:**
-- This is a subsequent code review (mention which iteration: 2nd, 3rd, etc.)
-- Read PR description and ALL comments (including previous code review discussions)
-- Read relevant PLAN.md section
-- Review COMPLETE commit history from main..HEAD (not just recent commits)
-- Understand what changed since the last review and why
-- Account for scope changes or enhancements added during development
-- Review the ENTIRE PR holistically, not just the diff since last review
-- Run tests to verify they still pass
-- Assess whether previous blockers were resolved
-- Identify any new issues introduced by changes
-- Evaluate whether the overall PR is now ready for merge
+## Invocation
 
-## Example Invocation
-
-### First Review Example
+The invocation prompt has three load-bearing parts: the blinding contract, the output format, and the exit-signal requirement.
 
 ```
-I need you to invoke the code-reviewer agent to perform a comprehensive code review of PR #42.
+Review this PR. Read only the diff and the existing codebase on disk.
 
-Context to provide:
-1. Read the PR description and comments: gh pr view 42
-2. Read the relevant section from .planning/PLAN.md (Section 2.4: Implement random selection)
-3. Review commit history: git log main..HEAD (show complete history)
-4. Environment: Use bbud conda environment (<python-path>) for running tests
-5. Apply brotein-buddy-standards, development-standards, and exhaustive-testing skills
+DO NOT read:
+- The PR description or comments (do not run `gh pr view`).
+- Anything under `.planning/` or `.scratch/`.
+- The branch's commit messages (do not run `git log main..HEAD` or `git show`).
+- Any prior review of this PR.
 
-Focus on all 11 code review dimensions. Identify blockers, suggestions, and potential enhancements.
+You MAY:
+- Read `git diff main..HEAD`.
+- Read any file in the working tree outside the deny-list above.
+- Read dependency source under `node_modules/`.
+- Run `npm test`, `npm run lint`, `npm run build`.
+- Search the web for library and API documentation.
+
+If you feel you need something from the deny-list to make a judgment,
+return that as a finding ("intent is not legible from the diff and codebase
+alone"). Do not read the forbidden input.
+
+Return findings as a numbered list. Each finding has:
+- severity: `blocker` | `concern` | `nit`
+- summary: one sentence
+- detail: a short paragraph
+
+If you find no material issues, your response must explicitly state:
+"No material issues."
+
+This is pass 1 of at most 2.
 ```
 
-### Subsequent Review Example
+For a second pass — only when the first triggered structural changes — use the same prompt with the last sentence replaced by:
 
 ```
-I need you to invoke the code-reviewer agent for a SECOND code review of PR #42.
-
-Context to provide:
-1. This is the 2nd code review iteration
-2. Read the PR description and ALL comments: gh pr view 42
-3. Read the relevant section from .planning/PLAN.md (Section 2.4: Implement random selection)
-4. Review COMPLETE commit history: git log main..HEAD (entire branch, not just recent commits)
-5. Environment: Use bbud conda environment (<python-path>) for running tests
-6. Apply brotein-buddy-standards, development-standards, and exhaustive-testing skills
-
-Important instructions for the agent:
-- Review the ENTIRE PR holistically, not just changes since the first review
-- Assess how feedback from the first review was addressed
-- Account for any scope expansions or enhancements added
-- Identify whether previous blockers are resolved
-- Check for any new issues introduced by recent changes
-- Determine if the PR is now ready for merge or needs further iteration
+This is pass 2 of 2. The diff has changed since pass 1; review the current
+diff fresh. Do not look up pass 1's findings.
 ```
 
 ## Agent Output Location
 
-The code-reviewer agent saves its review to:
+Save the review to:
 
 ```
-.scratch/code-review-pr-{pr-number}-{timestamp}.md
+.scratch/code-review-pr-{pr-number}-pass-{n}-{timestamp}.md
 ```
 
-Example: `.scratch/code-review-pr-42-2025-10-28T10:30:00-0700.md`
+Example: `.scratch/code-review-pr-100-pass-1-2026-05-21T14:30:00-0700.md`.
 
-After the agent completes:
-1. Review the code review file
-2. Determine if there are blockers to address
-3. If blockers exist: Address them, commit fixes, push, verify CI/CD passes
-4. If non-trivial changes were made: Run subsequent code review
-5. If satisfied: Proceed to user review and eventual teacher-mentor invocation
-
-## Decision Points
-
-After each code review:
-
-**Blockers found:**
-- Address all blockers
-- Make commits for fixes
-- Push to feature branch
-- Monitor CI/CD checks
-- If changes were non-trivial, run subsequent code review
-
-**No blockers, only suggestions:**
-- Decide whether to implement suggestions
-- If implementing: Make changes, commit, push
-- If changes were non-trivial, consider subsequent code review
-- Otherwise: Proceed to teacher-mentor agent invocation
-
-**Clean review:**
-- Proceed to teacher-mentor agent invocation (after user confirms ready to merge)
-
-## Best Practices
-
-1. **Always provide complete context:** Don't skip PR description, commit history, or PLAN.md
-2. **Environment matters:** Always mention bbud conda environment
-3. **Subsequent reviews are full reviews:** Emphasize reviewing the entire PR, not just deltas
-4. **Read all comments:** On subsequent reviews, ensure agent reads all PR comment threads
-5. **Run tests:** Code reviewer should verify tests pass in the correct environment
-6. **Save reviews:** All reviews saved to .scratch/ for reference by teacher-mentor agent
+`.scratch/` is gitignored and is on the reviewer's deny-list. The file is for the human's reference between iterations, not for a subsequent reviewer to consume.
