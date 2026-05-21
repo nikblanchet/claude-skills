@@ -47,11 +47,13 @@ If the reviewer feels it needs something from the deny-list to make a judgment, 
 
 Three sources motivate the contract.
 
-1. **Mitropoulos, Alexopoulos, Alexopoulos, and Spinellis (2026), "Measuring and Exploiting Contextual Bias in LLM-Assisted Security Code Review"** (arxiv 2603.18740v2). In their bias-injection study, redacting the PR description before passing the PR to an automated reviewer recovered detection in 12 of 17 missed cases (70%). Adding explicit instructions to ignore commit metadata recovered 4 more, raising overall detection to 16 of 17 (94%). The paper's conclusion: "Programmatically redacting bias elements is the safest approach" — instruction-based debiasing leaks because reviewers reference metadata anyway. Hence: redact at the source (this guide), do not rely on telling the model to ignore what it has been shown.
+1. **Mitropoulos, Alexopoulos, Alexopoulos, and Spinellis (March 2026), "Measuring and Exploiting Contextual Bias in LLM-Assisted Security Code Review"** (arxiv 2603.18740v2). In their bias-injection study, redacting the PR description before passing the PR to an automated reviewer recovered detection in 12 of 17 missed cases (70%). Adding explicit instructions to ignore commit metadata recovered 4 more, raising overall detection to 16 of 17 (94%). The paper's conclusion: "Programmatically redacting bias elements is the safest approach" — instruction-based debiasing leaks because reviewers reference metadata anyway. Hence: redact at the source (this guide), do not rely on telling the model to ignore what it has been shown.
 
 2. **McAleese et al. (2024), "LLM Critics Help Catch LLM Bugs" (CriticGPT, OpenAI)**. LLM critics catch real bugs that human reviewers miss. The wrinkle is calibration: context-rich critics carry a measurably higher false-positive rate, and false positives erode trust faster than missed bugs do. A blinded reviewer that finds fewer fake issues is more useful than a context-rich reviewer that finds more total issues but mixes in confident-sounding noise.
 
-3. **Anthropic Claude Code best practices**: "A fresh context improves code review since Claude won't be biased toward code it just wrote." The rule generalizes beyond Claude-authored code — any account of why the code looks the way it does primes the reviewer to rationalize rather than scrutinize.
+3. **Anthropic's Claude Code best practices** make the same point about fresh context: a reviewer without the author's framing won't be biased toward rationalizing the code it just saw produced. The rule generalizes beyond Claude-authored code — any account of why the code looks the way it does primes the reviewer to rationalize rather than scrutinize.
+
+Note the **deliberate asymmetry** with `teacher-mentor-guide.md` in this same directory: the teaching-mentor subagent is given the PR description, planning docs, commit history, and prior code reviews precisely because its job is to author an educational record of the final delivered state. That subagent needs intent. The code reviewer does not. Different stage of the workflow, different blinding.
 
 ## First Review vs Subsequent Reviews
 
@@ -123,4 +125,4 @@ Save the review to:
 
 Example: `.scratch/code-review-pr-100-pass-1-2026-05-21T14:30:00-0700.md`.
 
-`.scratch/` is gitignored and is on the reviewer's deny-list. The file is for the human's reference between iterations, not for a subsequent reviewer to consume.
+`.scratch/` is gitignored. Note the asymmetry: the reviewer **writes** its output here as the only permitted interaction with the directory, but the deny-list still forbids **reading** anything under `.scratch/` (including its own past output or another reviewer's). The file is for the human's reference between iterations, not for a subsequent reviewer to consume.
