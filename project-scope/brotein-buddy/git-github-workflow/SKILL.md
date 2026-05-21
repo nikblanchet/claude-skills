@@ -214,8 +214,8 @@ This section defines all steps from initial PR creation through merge, including
 
 #### 3. Invoke code-reviewer Agent
 - Timing: After tests pass, before considering merge
-- See references/code-reviewer-guide.md for complete invocation instructions
-- Provide: PR description, relevant `.planning/PLAN.md` section, commit history, bbud conda env context
+- See references/code-reviewer-guide.md for the full invocation prompt
+- Reviewer is **blinded**: only the diff (`git diff main..HEAD`) and the existing working tree as inputs — no PR description, no `.planning/`, no `git log main..HEAD`. Do not "improve" this by re-adding those inputs; that contradicts the policy in BroteinBuddy `CLAUDE.md`
 
 #### 4. Address Code Review Blockers
 - Fix all issues identified by code-reviewer agent
@@ -229,9 +229,9 @@ This section defines all steps from initial PR creation through merge, including
 - Add scope if warranted
 
 #### 6. Subsequent Code Reviews (If Needed)
-- For non-trivial changes since last review: Re-invoke code-reviewer agent
-- See references/code-reviewer-guide.md for subsequent review instructions
-- Repeat steps 4-6 until both agent and user are satisfied
+- A second pass is permitted only when post-review changes are non-trivial — i.e., structural objections that materially reshaped the PR. Tidying nits or fixing typos do not warrant a fresh pass
+- **Hard cap: two passes per PR.** A third pass means the PR is wrong-sized; split it or accept the current state
+- Each pass is a new fresh-context subagent invocation under the same blinding contract — see references/code-reviewer-guide.md
 
 #### 7. Invoke teacher-mentor Agent (FINAL STEP BEFORE MERGE)
 - Timing: ONLY after user explicitly confirms ready to merge
