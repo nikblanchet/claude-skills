@@ -412,9 +412,11 @@ def create_symlinks(wt_dir, repo_root):
         print("   Run init-shared.sh first")
         sys.exit(1)
 
-    # Create symlinks to root-level files
+    # Create symlinks to root-level files.
+    # CLAUDE.md is intentionally NOT symlinked here: it is now a tracked file
+    # in the BroteinBuddy repo, populated automatically by git checkout into
+    # every worktree. A symlink would shadow the tracked file.
     symlinks = [
-        ('CLAUDE.md', '../.shared/CLAUDE.md'),
         ('CLAUDE_CONTEXT.md', '../.shared/CLAUDE_CONTEXT.md'),
         ('.planning', '../.shared/.planning'),
         ('.scratch', '../.shared/.scratch'),
@@ -446,8 +448,9 @@ def create_symlinks(wt_dir, repo_root):
 def validate_and_fix_gitignore(wt_dir):
     """Validate .gitignore doesn't have problematic entries.
 
-    Note: Symlink entries (CLAUDE.md, .planning, .scratch, .claude/*, .env.local)
-    are now handled by .bare/info/exclude and should NOT be in .gitignore.
+    Note: Symlink entries (.planning, .scratch, .claude/*, .env.local) are
+    handled by .bare/info/exclude and should NOT be in .gitignore. CLAUDE.md
+    is no longer a symlink — it is tracked in git directly.
     """
     gitignore_path = wt_dir / '.gitignore'
 
@@ -547,7 +550,6 @@ def print_success_message(dir_name, branch, port):
     print(f"   Port: {port}")
     print()
     print("Shared items symlinked:")
-    print("  - CLAUDE.md (project context)")
     print("  - CLAUDE_CONTEXT.md (confidential info)")
     print("  - .planning/ (planning docs)")
     print("  - .scratch/ (throwaway files)")

@@ -90,7 +90,7 @@ Branch: bug/123-fix-inventory       → Directory: bug-123-fix-inventory
 3. Creates new git branch from the source branch
 4. Assigns unique port for dev server (main=5173, others=random 10000-60000)
 5. Creates worktree at `<directory-name>/` (repo root level) tracking `<branch-name>`
-6. Symlinks shared files (CLAUDE.md, CLAUDE_CONTEXT.md, .planning, .scratch)
+6. Symlinks shared files (CLAUDE_CONTEXT.md, .planning, .scratch). CLAUDE.md is no longer symlinked — it is tracked in the BroteinBuddy repo and populated by `git checkout` automatically.
 7. Symlinks `.claude/` directory (settings.local.json, skills/, agents/)
 8. Creates `.env.local` with VITE_PORT and BASE_URL for parallel development
 9. Runs `npm install` to install dependencies
