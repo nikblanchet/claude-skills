@@ -12,7 +12,7 @@ To maintain portability while supporting local customization, this repository us
 ## Why This Pattern?
 
 **The Problem:**
-- Skills need machine-specific paths (e.g., conda environment paths)
+- Skills need machine-specific paths (e.g., project roots, virtual environment interpreter paths)
 - Hardcoding paths makes repository non-portable and exposes local machine details
 - Generic placeholders alone reduce automation and require manual substitution
 
@@ -20,6 +20,11 @@ To maintain portability while supporting local customization, this repository us
 - Committed files use placeholders
 - SessionStart hook auto-detects project context and provides actual paths
 - `.local/` directory provides manual fallback when hook detection isn't available
+
+**Python Paths Under uv:**
+- Each project (or worktree) has its own uv-managed environment in `.venv/`
+- `<python-path>` resolves to that environment's interpreter: `<project-root>/.venv/bin/python`
+- Commands run through `uv run` (e.g., `uv run pytest`) find the project environment on their own and need no interpreter path at all
 
 ## Using .local/ Directory
 
@@ -56,11 +61,14 @@ cat > .local/env-config.md << 'EOF'
 
 ## Python Paths
 
+Each project has its own uv-managed environment: .venv/ under the project root
+(see Project Roots below).
+
 ### BroteinBuddy
-BBUD_PYTHON=/Users/nik/miniconda3/envs/bbud/bin/python
+BBUD_PYTHON=$BROTEIN_BUDDY_ROOT/.venv/bin/python
 
 ### DocImp
-DOCIMP_PYTHON=/Users/nik/miniconda3/bin/python
+DOCIMP_PYTHON=$DOCIMP_ROOT/.venv/bin/python
 
 ## Project Roots
 
@@ -127,7 +135,7 @@ claude
 
 # Hook automatically detects:
 # - Project: BroteinBuddy
-# - Python: /Users/nik/miniconda3/envs/bbud/bin/python
+# - Python: this worktree's uv-managed interpreter (.venv/bin/python)
 # Skills using <python-path> just work!
 ```
 

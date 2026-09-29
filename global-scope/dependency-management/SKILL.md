@@ -1,6 +1,6 @@
 ---
 name: dependency-management
-description: Use quality dependencies freely - default to using existing libraries over reinventing. For Python prefer conda over pip, maintain separate requirements-conda.txt and requirements-pip.txt. Use when adding dependencies, installing packages, or evaluating whether to use a library.
+description: Use quality dependencies freely - default to using existing libraries over reinventing. For Python use uv with isolated per-project environments and never install packages into a global or system interpreter. Use when adding dependencies, installing packages, or evaluating whether to use a library.
 ---
 
 # Dependency Management
@@ -12,7 +12,7 @@ Reinventing the wheel is dumb. If a respected, reliable library exists and is ea
 **Coding is building with Legos, not creating from scratch.**
 
 - We don't write in Assembly, so take advantage of the free skilled labor others have contributed
-- Dependencies don't bother me - add them freely to requirements files or package.json
+- Dependencies don't bother me - add them freely to pyproject.toml or package.json
 - A 50-line utility from a well-maintained library is better than writing those 50 lines yourself
 
 ## When to Use a Dependency
@@ -78,52 +78,58 @@ Use common sense and consider:
 - Are tests comprehensive?
 - CI/CD in place?
 
-## Python Package Management: Conda + Pip
+## Python Package Management: uv
 
-**Prefer conda over pip when available.**
+**Every project gets its own environment, managed by uv.**
 
-Conda handles system-level dependencies better, but not all packages are available in conda.
+**Critical: Never install packages into a global or system interpreter**
+- No bare `pip install` or `pip3 install`, no `sudo pip`, no `--system`, no `--break-system-packages`
+- Project packages belong in the project's `.venv`; standalone tools get their own isolated environment via `uv tool`
 
-**Best practice: Separate requirements files**
+**Best practice: pyproject.toml + uv.lock**
 
-Maintain two requirements files:
-- `requirements-conda.txt` - Packages available in conda
-- `requirements-pip.txt` - Packages only available via pip
+- `pyproject.toml` - Declares the project's dependencies
+- `uv.lock` - Locks the exact resolved versions; commit it
 
-This ensures you use conda when possible and only fall back to pip when necessary.
-
-**Installation workflow:**
+**Project workflow:**
 
 ```bash
-# Activate the project's conda environment
-conda activate {env-name}
+# Start a new project (creates pyproject.toml)
+uv init
 
-# Install conda packages first
-conda install --file requirements-conda.txt
+# Add a dependency (updates pyproject.toml, uv.lock, and .venv)
+uv add package-name
 
-# Then install pip packages within the conda environment
-pip install -r requirements-pip.txt
+# Add a development-only dependency
+uv add --dev package-name
+
+# Bring .venv in line with uv.lock (after cloning or pulling)
+uv sync
+
+# Run a command in the project's environment - no activation needed
+uv run pytest
 ```
 
-**Critical: Always install pip packages within the conda environment**
-- Don't switch to pip globally
-- The `conda activate {env}` ensures pip installs into the conda environment
-- Note the `-r` flag for pip (required for reading from file)
-
-**Adding new dependencies:**
+**Existing projects that only have requirements.txt:**
 
 ```bash
-# Check if available in conda first
-conda search package-name
+uv venv                               # Create .venv in the project
+uv pip install -r requirements.txt    # Installs into the project's .venv only
+```
 
-# If available in conda:
-conda install package-name
-echo "package-name>=1.2.0" >> requirements-conda.txt
+**Scripts, tools, and interpreters:**
 
-# If only available via pip:
-conda activate {env-name}
-pip install package-name
-echo "package-name>=1.2.0" >> requirements-pip.txt
+```bash
+# One-off script that needs a library (temporary environment)
+uv run --with package-name script.py
+
+# Command-line tools: install in isolation, or run without installing
+uv tool install tool-name
+uvx tool-name
+
+# Install an interpreter, then pin the project to it (.python-version)
+uv python install {version}
+uv python pin {version}
 ```
 
 ## Node.js Package Management
@@ -158,16 +164,19 @@ Package manager (npm, yarn, pnpm) automatically updates package.json and lockfil
 
 **Document non-obvious dependency choices:**
 
-If a dependency choice isn't obvious, add a comment in the requirements file or nearby documentation:
+If a dependency choice isn't obvious, add a comment in `pyproject.toml` or nearby documentation:
 
-```
-# requirements-conda.txt
+```toml
+# pyproject.toml
 
-# Using radon for cyclomatic complexity (industry standard)
-radon>=6.0.1
+[project]
+dependencies = [
+    # Using radon for cyclomatic complexity (industry standard)
+    "radon>=6.0.1",
 
-# anthropic SDK for Claude API access (official client)
-anthropic>=0.18.0
+    # anthropic SDK for Claude API access (official client)
+    "anthropic>=0.18.0",
+]
 ```
 
 This helps future maintainers understand why dependencies exist.
@@ -188,16 +197,17 @@ This helps future maintainers understand why dependencies exist.
 ## Quick Reference
 
 ```bash
-# Python with conda environment
-conda activate project-env
-conda install --file requirements-conda.txt
-pip install -r requirements-pip.txt
+# Python with uv (isolated per-project environment)
+uv sync
+uv run pytest
 
 # Add new Python dependency
-conda search package-name  # Check conda first
-conda install package-name && echo "package-name>=1.2.0" >> requirements-conda.txt
-# OR
-pip install package-name && echo "package-name>=1.2.0" >> requirements-pip.txt
+uv add package-name
+uv add --dev dev-package
+
+# One-off script or command-line tool
+uv run --with package-name script.py
+uvx tool-name
 
 # Node.js
 npm install package-name
@@ -209,9 +219,9 @@ npm install --save-dev dev-package
 - Default to using dependencies
 - Don't reimplement what exists
 - Evaluate quality with common sense
-- For Python: Use conda when available, pip when necessary
-- Maintain separate requirements-conda.txt and requirements-pip.txt
-- Always install pip packages within conda environment
+- For Python: Use uv, with an isolated environment per project
+- Declare dependencies in pyproject.toml and commit uv.lock
+- Never install packages into a global or system interpreter
 - Stay reasonably current with updates
 - When updating dependencies, migrate deprecated APIs (see handle-deprecation-warnings skill)
 - Add dependencies freely

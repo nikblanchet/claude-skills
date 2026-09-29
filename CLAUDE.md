@@ -85,7 +85,7 @@ The `access-skill-resources` skill teaches how to navigate symlinks and locate b
 ### Dependency Management
 
 - Use quality dependencies freely - don't reinvent the wheel
-- Python: Prefer conda over pip, maintain separate `requirements-conda.txt` and `requirements-pip.txt`
+- Python: Use uv with isolated per-project environments (`pyproject.toml` + committed `uv.lock`); never install packages into a global or system interpreter
 - Stay reasonably current with updates and address security advisories
 
 ### CLI UX Standards
@@ -204,8 +204,8 @@ In worktree-based development, shared files are symlinked into each worktree:
 
 ```bash
 # Python
-/Library/Frameworks/Python.framework/Versions/3.14/bin/python3 -m pytest -v
-/Library/Frameworks/Python.framework/Versions/3.14/bin/python3 -m pytest --cov
+uv run pytest -v
+uv run pytest --cov
 
 # Node.js
 npm test
