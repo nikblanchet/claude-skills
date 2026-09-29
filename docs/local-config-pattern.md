@@ -22,9 +22,10 @@ To maintain portability while supporting local customization, this repository us
 - `.local/` directory provides manual fallback when hook detection isn't available
 
 **Python Paths Under uv:**
-- Each project (or worktree) has its own uv-managed environment in `.venv/`
-- `<python-path>` resolves to that environment's interpreter: `<project-root>/.venv/bin/python`
-- Commands run through `uv run` (e.g., `uv run pytest`) find the project environment on their own and need no interpreter path at all
+- Commands run through `uv run` (e.g., `uv run pytest`, `uv run python script.py`) find the project environment on their own and need no interpreter path at all. This is the reliable way to get a project's interpreter
+- A Python project (or worktree) keeps its uv-managed environment in `.venv/`. uv creates it lazily, on the first `uv sync` or `uv run`, so a fresh checkout may not have one yet
+- `<python-path>` is only for the rare case that needs an explicit interpreter path. It resolves to `<project-root>/.venv/bin/python` once that environment exists
+- Projects with no Python dependencies (e.g., BroteinBuddy) have no `.venv/` and no `<python-path>`
 
 ## Using .local/ Directory
 
@@ -61,11 +62,12 @@ cat > .local/env-config.md << 'EOF'
 
 ## Python Paths
 
-Each project has its own uv-managed environment: .venv/ under the project root
-(see Project Roots below).
+Prefer uv run, which needs no interpreter path. When an explicit path is
+needed, a Python project's uv-managed environment is .venv/ under the project
+root (see Project Roots below). It exists only after the first uv sync or
+uv run.
 
-### BroteinBuddy
-BBUD_PYTHON=$BROTEIN_BUDDY_ROOT/.venv/bin/python
+BroteinBuddy has no Python environment, so it has no entry here.
 
 ### DocImp
 DOCIMP_PYTHON=$DOCIMP_ROOT/.venv/bin/python
@@ -73,12 +75,11 @@ DOCIMP_PYTHON=$DOCIMP_ROOT/.venv/bin/python
 ## Project Roots
 
 BROTEIN_BUDDY_ROOT=~/Documents/Code/BroteinBuddy
-DOCIMP_ROOT=~/Documents/Code/Polygot/docimp
+DOCIMP_ROOT=~/Documents/Code/Polyglot/docimp
 
 ## Usage
 
 When skills reference:
-- `<python-path>` in BroteinBuddy → use BBUD_PYTHON value
 - `<python-path>` in DocImp → use DOCIMP_PYTHON value
 - `<project-root>` in DocImp → use DOCIMP_ROOT value
 EOF
@@ -113,7 +114,7 @@ While `.local/` works as a fallback, the **recommended approach** is to use an e
 
 ### Hook Setup
 
-See `project-scope/brotein-buddy/git-github-workflow/README.md` for complete SessionStart hook setup instructions with example code.
+See `project-scope/brotein-buddy/git-github-workflow/references/README.md` for SessionStart hook setup instructions with example code. That example reports the interpreter, the uv path, and the active virtual environment, and tells sessions to use `uv run`. Project detection (such as the DocImp branch in `~/.claude/detect-python-env.sh`) is an addition on top of it.
 
 ## Best Practice: Hybrid Approach
 
@@ -126,27 +127,36 @@ This provides the best of both worlds:
 - Manual control when needed
 - Graceful degradation if hook isn't configured
 
-## Example: Working with BroteinBuddy
+## Example: Working with DocImp
 
 ### With SessionStart Hook (Automatic):
 ```bash
-cd ~/Documents/Code/BroteinBuddy/wt/main
+cd ~/Documents/Code/Polyglot/docimp
 claude
 
 # Hook automatically detects:
-# - Project: BroteinBuddy
-# - Python: this worktree's uv-managed interpreter (.venv/bin/python)
-# Skills using <python-path> just work!
+# - Project: DocImp
+# - Project root: the path to use for <project-root>
+# - Python: the interpreter on PATH (the project's .venv interpreter when that environment is active)
+# Commands run through uv run need no interpreter path at all
 ```
 
 ### With .local/ Directory (Manual):
 ```bash
-cd ~/Documents/Code/BroteinBuddy/wt/main
+cd ~/Documents/Code/Polyglot/docimp
 claude
 
-# When skill says: "<python-path> .claude/skills/git-github-workflow/scripts/setup-worktree.py"
-# You tell Claude: "Check .local/env-config.md for python-path"
-# Claude reads BBUD_PYTHON and uses the correct path
+# When skill says: "cd <project-root>"
+# You tell Claude: "Check .local/env-config.md for project-root"
+# Claude reads DOCIMP_ROOT and uses the correct path
+```
+
+### BroteinBuddy Needs Neither
+
+BroteinBuddy has no Python environment, and its skill no longer uses placeholders. The one bundled Python script imports only the standard library and runs without an interpreter path:
+
+```bash
+uv run .claude/skills/git-github-workflow/scripts/setup-worktree.py
 ```
 
 ## Summary

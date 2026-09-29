@@ -128,13 +128,13 @@ The docimp project uses git worktrees for parallel development with git hooks en
 **One-time setup:**
 ```bash
 # Install hooks to protect main branch
-/Library/Frameworks/Python.framework/Versions/3.14/bin/python3 .claude/skills/git-workflow/scripts/install_hooks.py
+uv run python .claude/skills/git-workflow/scripts/install_hooks.py
 ```
 
 **Create worktree for feature/issue:**
 ```bash
 # Script handles branch creation, worktree setup, and symlink creation
-/Library/Frameworks/Python.framework/Versions/3.14/bin/python3 .claude/skills/git-workflow/scripts/create_worktree.py <branch-name> [base-branch]
+uv run python .claude/skills/git-workflow/scripts/create_worktree.py <branch-name> [base-branch]
 ```
 
 The script:
@@ -216,9 +216,9 @@ npm run test:e2e
 ### Code Quality
 
 ```bash
-# Python
-ruff check
-mypy src/
+# Python (tools declared as dev dependencies: uv add --dev ruff mypy)
+uv run ruff check
+uv run mypy src/
 
 # Node.js
 npm run lint

@@ -209,7 +209,7 @@ This section defines all steps from initial PR creation through merge, including
 #### 2. Ensure All CI/CD Checks Pass
 - Monitor: `gh pr checks <pr-number>`
 - Verify all tests pass, linting passes, build succeeds
-- Verify locally with `npm test`, `npm run lint`, and `npm run build` (BroteinBuddy has no Python tests, so there is no pytest step)
+- Verify locally with the commands CI gates on: `npm run lint`, `npm run format:check`, `npm run check`, `npm run test:coverage`, `npm run test:e2e`, and `npm run build` (BroteinBuddy has no Python tests, so there is no pytest step)
 - See references/ci-cd-monitoring.md for detailed monitoring procedures
 
 #### 3. Invoke code-reviewer Agent
@@ -310,7 +310,7 @@ gh run view <run-id>          # Detailed run information
 - Before merging
 
 **Common checks:**
-- Tests (`npm test`; BroteinBuddy has no Python tests)
+- Tests (`npm run test:coverage`, which enforces the coverage thresholds, and the Playwright specs via `npm run test:e2e`; BroteinBuddy has no Python tests)
 - Linting (`npm run lint`)
 - Type checking (`npx tsc`)
 - Build (`npm run build`)

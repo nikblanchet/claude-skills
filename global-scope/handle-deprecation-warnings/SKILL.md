@@ -183,7 +183,7 @@ When updating dependencies, always check for and address new deprecation warning
 
 ```bash
 # 1. See deprecation warning during tests
-pytest -v
+uv run pytest -v
 
 # 2. Read warning carefully, check migration docs
 # (library documentation, changelog, migration guide)
@@ -195,7 +195,7 @@ pytest -v
 gh issue create --title "Migrate deprecated API" --body "..." --label "technical-debt"
 
 # 5. Verify warning is gone
-pytest -v  # Should be clean
+uv run pytest -v  # Should be clean
 ```
 
 ## Remember

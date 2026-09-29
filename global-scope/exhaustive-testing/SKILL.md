@@ -160,7 +160,7 @@ Some **manual testing is required** on this project! See [Manual Testing Guide](
 
 Run automated tests:
 ```bash
-pytest -v
+uv run pytest -v
 npm test
 ```
 

@@ -83,7 +83,7 @@ Code reviews provide:
 ### 5. Environment Context
 
 Inform the agent about how commands are run in this project:
-- If the agent needs to run any Python scripts, use `uv run <script>` (never a global or system interpreter)
+- If the agent needs to run any Python scripts, use `uv run <script>` (never install packages into a global or system interpreter)
 - Tests can be run via `npm test` (Vitest) and `npm run test:e2e` (Playwright); the project has no Python tests
 - This ensures any verification happens in the correct environment
 

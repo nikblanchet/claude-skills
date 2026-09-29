@@ -94,7 +94,8 @@ Use common sense and consider:
 **Project workflow:**
 
 ```bash
-# Start a new project (creates pyproject.toml)
+# Start a new project (creates pyproject.toml plus starter files such as README.md and a src/ tree;
+# add --bare to create only pyproject.toml, e.g. in an existing directory)
 uv init
 
 # Add a dependency (updates pyproject.toml, uv.lock, and .venv)
@@ -113,8 +114,18 @@ uv run pytest
 **Existing projects that only have requirements.txt:**
 
 ```bash
-uv venv                               # Create .venv in the project
-uv pip install -r requirements.txt    # Installs into the project's .venv only
+# Run from the project root
+uv venv                                                         # Create .venv in the current directory
+uv pip install --python .venv/bin/python -r requirements.txt    # Install into that .venv, named explicitly
+```
+
+Without `--python`, `uv pip` installs into the active virtual environment, or else the nearest `.venv` in the current directory or any parent directory - which can be a different project's or a shared environment. Always name the target.
+
+To move such a project to `pyproject.toml` + `uv.lock`:
+
+```bash
+uv init --bare                # Create only pyproject.toml
+uv add -r requirements.txt    # Import the requirements (updates pyproject.toml, uv.lock, and .venv)
 ```
 
 **Scripts, tools, and interpreters:**
@@ -167,9 +178,10 @@ Package manager (npm, yarn, pnpm) automatically updates package.json and lockfil
 If a dependency choice isn't obvious, add a comment in `pyproject.toml` or nearby documentation:
 
 ```toml
-# pyproject.toml
+# pyproject.toml (excerpt)
 
 [project]
+# name, version, and other fields omitted
 dependencies = [
     # Using radon for cyclomatic complexity (industry standard)
     "radon>=6.0.1",

@@ -72,12 +72,12 @@ echo "Run project code and scripts with: uv run <command>"
 ```
 
 3. **Benefits:**
-   - Completely automatic - skills work seamlessly
-   - No manual path substitution needed
-   - Same guidance in every project - no per-project detection to maintain
-   - Graceful fallback if hook isn't configured
+   - Completely automatic - every session starts with the uv rules
+   - No interpreter path to look up or substitute
+   - No BroteinBuddy-specific detection to maintain
+   - Nothing breaks without the hook - the `uv run` commands in this skill work either way
 
-**See also:** For a complete working example, check the hook at `~/.claude/detect-python-env.sh` in my setup. It has no BroteinBuddy-specific logic: it reports the interpreter path, the uv path, and the active virtual environment, and tells sessions to use `uv run`.
+**See also:** For a complete working example, check the hook at `~/.claude/detect-python-env.sh` in my setup. It has no BroteinBuddy-specific logic (its only project-specific branch is for DocImp): it reports the interpreter path, the uv path, and the active virtual environment, and tells sessions to use `uv run`.
 
 #### Option 2: Any Python 3.7+ Interpreter (Fallback)
 
