@@ -85,7 +85,7 @@ The `access-skill-resources` skill teaches how to navigate symlinks and locate b
 ### Dependency Management
 
 - Use quality dependencies freely - don't reinvent the wheel
-- Python: Prefer conda over pip, maintain separate `requirements-conda.txt` and `requirements-pip.txt`
+- Python: Use uv with isolated per-project environments (`pyproject.toml` + committed `uv.lock`); never install packages into a global or system interpreter
 - Stay reasonably current with updates and address security advisories
 
 ### CLI UX Standards
@@ -128,13 +128,13 @@ The docimp project uses git worktrees for parallel development with git hooks en
 **One-time setup:**
 ```bash
 # Install hooks to protect main branch
-/Library/Frameworks/Python.framework/Versions/3.14/bin/python3 .claude/skills/git-workflow/scripts/install_hooks.py
+uv run python .claude/skills/git-workflow/scripts/install_hooks.py
 ```
 
 **Create worktree for feature/issue:**
 ```bash
 # Script handles branch creation, worktree setup, and symlink creation
-/Library/Frameworks/Python.framework/Versions/3.14/bin/python3 .claude/skills/git-workflow/scripts/create_worktree.py <branch-name> [base-branch]
+uv run python .claude/skills/git-workflow/scripts/create_worktree.py <branch-name> [base-branch]
 ```
 
 The script:
@@ -204,8 +204,8 @@ In worktree-based development, shared files are symlinked into each worktree:
 
 ```bash
 # Python
-/Library/Frameworks/Python.framework/Versions/3.14/bin/python3 -m pytest -v
-/Library/Frameworks/Python.framework/Versions/3.14/bin/python3 -m pytest --cov
+uv run pytest -v
+uv run pytest --cov
 
 # Node.js
 npm test
@@ -216,9 +216,9 @@ npm run test:e2e
 ### Code Quality
 
 ```bash
-# Python
-ruff check
-mypy src/
+# Python (tools declared as dev dependencies: uv add --dev ruff mypy)
+uv run ruff check
+uv run mypy src/
 
 # Node.js
 npm run lint

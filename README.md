@@ -34,7 +34,7 @@ Active skills are symlinked to `~/.claude/skills/` from this repository.
 4. **github-code-reviews** - Comprehensive code review process (11 dimensions)
 5. **exhaustive-testing** - Testing philosophy and practices
 6. **handle-deprecation-warnings** - Address deprecation warnings proactively
-7. **dependency-management** - Using dependencies freely (conda/pip workflow)
+7. **dependency-management** - Using dependencies freely (uv workflow)
 8. **cli-ux-colorful** - Colorful CLI output design
 
 ### Archived Skills (7)

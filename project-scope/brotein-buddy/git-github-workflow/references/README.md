@@ -2,26 +2,38 @@
 
 This skill defines the complete git and GitHub workflow for the BroteinBuddy project, including worktree management, branch naming conventions, commit standards, PR workflow, and merge strategy.
 
-## Path Placeholders in Documentation
+## Running Python in This Skill
 
-Throughout this skill's documentation, you'll see `<python-path>` used as a placeholder. This represents the path to your Python interpreter.
+Throughout this skill's documentation, Python is run with `uv run`. There is no interpreter path to look up or substitute.
+
+BroteinBuddy is a Svelte 5 + TypeScript project with no Python dependencies: it has no `pyproject.toml`, `uv.lock`, or `requirements.txt`, and no Python tests. Its tests are Vitest and Playwright suites run through npm (`npm test`, `npm run test:e2e`).
+
+The only Python involved is this skill's bundled `scripts/setup-worktree.py`. It imports only the standard library and needs Python 3.7 or newer:
+
+```bash
+uv run .claude/skills/git-github-workflow/scripts/setup-worktree.py
+```
+
+There is nothing to install and no environment to activate.
+
+If BroteinBuddy ever gains Python code with dependencies, declare them in a `pyproject.toml` managed by uv (see the `dependency-management` skill) and run its tests with `uv run pytest`.
 
 ### Local Setup
 
 My local environment uses:
-- **Conda environments** for Python dependency management
-- **pip** as a fallback for packages not available in conda
-- Specific conda environment for BroteinBuddy: `bbud`
+- **uv** for Python, with isolated per-project environments
+- No packages installed into a global or system interpreter
+- **nvm** for Node.js
 
-In my setup, `<python-path>` resolves to: `/Users/nik/miniconda3/envs/bbud/bin/python`
+Earlier versions of this skill used a `<python-path>` placeholder that resolved to the interpreter of a BroteinBuddy-specific Python environment. That environment no longer exists and the placeholder has been retired: every command that used it is now either a `uv run` command or an npm script.
 
 ### Customizing for Your Environment
 
-You have several options for using this skill with your own setup:
+You have two options for using this skill with your own setup:
 
-#### Option 1: Enhanced SessionStart Hook (Recommended for Seamless Operation)
+#### Option 1: SessionStart Hook (Recommended for Seamless Operation)
 
-The best approach is to enhance your Claude Code SessionStart hook to automatically detect project-specific Python paths. This provides zero-friction usage - skills just work without you thinking about placeholders.
+The best approach is a Claude Code SessionStart hook that tells every session how Python is managed on your machine. This provides zero-friction usage - skills just work without you restating the rules.
 
 **Setup Instructions:**
 
@@ -29,87 +41,59 @@ The best approach is to enhance your Claude Code SessionStart hook to automatica
    - Default location: `~/.claude/detect-python-env.sh` (or similar)
    - If you don't have one, create it and register it in `~/.claude/settings.json`
 
-2. **Add project detection logic:**
+2. **Report the interpreter, uv, and the active virtual environment:**
 
 ```bash
 #!/bin/bash
-# Detect active Python environment and communicate it to Claude Code
-# Enhanced with project-specific detection
+# Detect the Python setup and communicate it to Claude Code
 
-# Get current working directory for project detection
-CURRENT_DIR="$PWD"
-
-# Default Python detection
+# Interpreter on PATH
 PYTHON_PATH=$(which python || which python3)
-# ... (your existing detection logic)
 
-# Project-specific Python path detection
-PROJECT_PYTHON_PATH=""
-PROJECT_CONTEXT=""
+# uv manages environments, dependencies, and tools
+UV_PATH=$(which uv)
 
-# Check if we're in BroteinBuddy project
-if [[ "$CURRENT_DIR" == *"BroteinBuddy"* ]]; then
-    # BroteinBuddy uses the bbud conda environment
-    BBUD_PYTHON="/path/to/your/conda/envs/bbud/bin/python"
-    if [ -f "$BBUD_PYTHON" ]; then
-        PROJECT_PYTHON_PATH="$BBUD_PYTHON"
-        PROJECT_CONTEXT="BroteinBuddy"
-        PLACEHOLDER_GUIDANCE="When you see <python-path> in skills, use: $BBUD_PYTHON"
-    fi
+# Active virtual environment, if any
+if [ -n "$VIRTUAL_ENV" ]; then
+    ENV_INFO="Virtual environment: $VIRTUAL_ENV"
+else
+    ENV_INFO="No virtual environment active"
 fi
 
 # Add to your hook output
-if [ -n "$PROJECT_CONTEXT" ]; then
-    echo "PROJECT-SPECIFIC CONTEXT DETECTED:"
-    echo "- Project: $PROJECT_CONTEXT"
-    echo "- Python for this project: $PROJECT_PYTHON_PATH"
-    echo ""
-    echo "$PLACEHOLDER_GUIDANCE"
-fi
+echo "Python Environment Detected:"
+echo "- Python: $PYTHON_PATH"
+echo "- uv: $UV_PATH"
+echo "- $ENV_INFO"
+echo ""
+echo "This machine uses uv with isolated environments."
+echo "Never install packages into a global interpreter."
+echo "Run project code and scripts with: uv run <command>"
 ```
 
 3. **Benefits:**
-   - Completely automatic - skills work seamlessly
-   - No manual path substitution needed
-   - Project-aware - correct Python path for each project
-   - Graceful fallback if hook isn't configured
+   - Completely automatic - every session starts with the uv rules
+   - No interpreter path to look up or substitute
+   - No BroteinBuddy-specific detection to maintain
+   - Nothing breaks without the hook - the `uv run` commands in this skill work either way
 
-**See also:** For a complete working example, check the enhanced hook at `~/.claude/detect-python-env.sh` in my setup.
+**See also:** For a complete working example, check the hook at `~/.claude/detect-python-env.sh` in my setup. It has no BroteinBuddy-specific logic (its only project-specific branch is for DocImp): it reports the interpreter path, the uv path, and the active virtual environment, and tells sessions to use `uv run`.
 
-#### Option 2: Manual .local/ Configuration (Fallback)
+#### Option 2: Any Python 3.7+ Interpreter (Fallback)
 
-Create a `.local/` directory in your project root with environment-specific configuration:
+If uv is not installed, `setup-worktree.py` still runs with any Python 3.7 or newer interpreter, because it needs only the standard library:
 
 ```bash
-# Create .local/ directory (gitignored)
-mkdir .local
-
-# Create env-config.md
-cat > .local/env-config.md << 'EOF'
-# Local Environment Configuration
-
-## Python Paths
-BBUD_PYTHON=/your/path/to/conda/envs/bbud/bin/python
-
-## Usage
-When you see <python-path> in skills, use: /your/path/to/conda/envs/bbud/bin/python
-EOF
+python3 .claude/skills/git-github-workflow/scripts/setup-worktree.py
 ```
 
-Add to `.gitignore`:
-```
-.local/
-```
+Do not install packages into that interpreter.
 
-#### Option 3: Direct Substitution (Last Resort)
+### Why uv run?
 
-Simply replace `<python-path>` with your actual path wherever you see it in the documentation. This works but requires manual effort each time.
-
-### Why Placeholders?
-
-Using placeholders makes this skill:
-- **Portable**: Can be shared across different machines and setups
-- **Flexible**: Works with any Python environment (conda, virtualenv, system Python, etc.)
+Using `uv run` makes this skill:
+- **Portable**: The same command works on any machine with uv installed
+- **Isolated**: Nothing is installed into a global or system interpreter
 - **Privacy-preserving**: Doesn't expose local machine details in committed files
 
 ## Getting Started

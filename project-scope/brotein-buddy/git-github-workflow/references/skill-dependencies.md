@@ -89,7 +89,7 @@ Invoke the development-standards skill
 **Type:** User skill
 **Location:** `~/.claude/skills/dependency-management/`
 
-**Purpose:** Use quality dependencies freely - default to using existing libraries over reinventing. For Python prefer conda over pip, maintain separate requirements-conda.txt and requirements-pip.txt.
+**Purpose:** Use quality dependencies freely - default to using existing libraries over reinventing. For Python use uv with isolated per-project environments and never install packages into a global or system interpreter.
 
 **When to invoke:**
 - Adding new dependencies
@@ -98,7 +98,7 @@ Invoke the development-standards skill
 - Setting up project dependencies
 - Managing Python/Node.js package versions
 
-**Trigger keywords:** npm install, dependency, package, library, requirements, conda, pip
+**Trigger keywords:** npm install, dependency, package, library, requirements, uv, pyproject.toml, pip install
 
 **Invocation:**
 ```
@@ -106,7 +106,7 @@ Invoke the dependency-management skill
 ```
 
 **Key reminders for BroteinBuddy:**
-- Use bbud conda environment: `<python-path>`
+- For Python: use uv (`uv run`, `uv add`) and never install packages into a global or system interpreter. BroteinBuddy currently has no Python dependencies
 - For Node.js: `npm install` (standard process)
 - Prefer established libraries over reinventing solutions
 
@@ -134,7 +134,7 @@ Invoke the exhaustive-testing skill
 **Key reminders for BroteinBuddy:**
 - 90% coverage overall required
 - 100% coverage for critical paths required
-- Run tests in bbud conda environment
+- Run tests through npm (`npm test`, `npm run test:e2e`); BroteinBuddy has no Python tests
 - Address deprecation warnings immediately
 
 ### handle-deprecation-warnings
