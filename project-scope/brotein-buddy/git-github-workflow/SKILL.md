@@ -23,10 +23,10 @@ This skill includes bundled resources in standard subdirectories:
 **If you have trouble locating bundled resources, invoke the `access-skill-resources` skill.**
 
 **Requirements for setup-worktree.py script:**
-- Must be run from the `bbud` conda environment
-- Use the Python interpreter from your bbud environment: `<python-path>`
+- Run it with uv: `uv run .claude/skills/git-github-workflow/scripts/setup-worktree.py`
+- Uses only the Python standard library (Python 3.7 or newer), so there is no environment to set up and nothing to install
 - Script is interactive and will prompt for branch and directory names
-- See README.md in this skill directory for setup details
+- See references/README.md in this skill directory for setup details
 
 ## When to Use
 
@@ -68,7 +68,7 @@ Use the `setup-worktree.py` script to create a new worktree. The script is inter
 
 **Command:**
 ```bash
-<python-path> .claude/skills/git-github-workflow/scripts/setup-worktree.py
+uv run .claude/skills/git-github-workflow/scripts/setup-worktree.py
 ```
 
 **Interactive prompts:**
@@ -110,7 +110,7 @@ Branch: bug/123-fix-inventory       → Directory: bug-123-fix-inventory
 
 When running non-interactively (no TTY), the script automatically includes local changes.
 
-**Note:** The script must be run with the bbud conda environment Python interpreter. Do not use `conda activate` in bash commands - instead use the full path to the Python executable (represented as `<python-path>` in this documentation).
+**Note:** Run the script through `uv run`. It imports only the Python standard library, and BroteinBuddy itself has no Python dependencies (no `pyproject.toml`, `uv.lock`, or `requirements.txt`), so there is no environment to activate and nothing to install. Never install packages into a global or system interpreter.
 
 ## Port Assignment for Parallel Development
 
@@ -209,7 +209,7 @@ This section defines all steps from initial PR creation through merge, including
 #### 2. Ensure All CI/CD Checks Pass
 - Monitor: `gh pr checks <pr-number>`
 - Verify all tests pass, linting passes, build succeeds
-- Use bbud conda environment for local verification: `<python-path> -m pytest`
+- Verify locally with `npm test`, `npm run lint`, and `npm run build` (BroteinBuddy has no Python tests, so there is no pytest step)
 - See references/ci-cd-monitoring.md for detailed monitoring procedures
 
 #### 3. Invoke code-reviewer Agent
@@ -310,7 +310,7 @@ gh run view <run-id>          # Detailed run information
 - Before merging
 
 **Common checks:**
-- Tests (must run in bbud conda environment: `<python-path> -m pytest`)
+- Tests (`npm test`; BroteinBuddy has no Python tests)
 - Linting (`npm run lint`)
 - Type checking (`npx tsc`)
 - Build (`npm run build`)
@@ -337,7 +337,7 @@ This workflow depends on several other skills that must be explicitly invoked at
 
 ## Quick Reference
 
-**Create worktree:** `<python-path> .claude/skills/git-github-workflow/scripts/setup-worktree.py` (interactive)
+**Create worktree:** `uv run .claude/skills/git-github-workflow/scripts/setup-worktree.py` (interactive)
 **Commit:** Make many small commits, test before pushing
 **PR:** Use `gh pr create`, ensure tests pass
 **Merge:** Squash merge only

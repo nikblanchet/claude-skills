@@ -5,9 +5,11 @@ setup-worktree.py - Create a new worktree with shared files symlinked
 This script creates a new git worktree branched from an existing worktree,
 with proper symlinks to shared files in the .shared directory.
 
-IMPORTANT: Run this script with the bbud conda environment activated:
-    conda activate bbud
-    ./setup-worktree.py
+IMPORTANT: Run this script with uv:
+    uv run setup-worktree.py
+
+It uses only the Python standard library (Python 3.7 or newer), so there is
+no environment to activate and nothing to install.
 """
 
 import argparse

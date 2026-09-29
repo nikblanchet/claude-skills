@@ -183,9 +183,9 @@ npm test
 npm run test:unit
 ```
 
-**Important:** Run tests in bbud conda environment:
+**Important:** All BroteinBuddy tests run through npm (Vitest for unit and integration, Playwright for E2E). The project has no Python tests, so there is no pytest step. For E2E failures:
 ```bash
-<python-path> -m pytest
+npm run test:e2e
 ```
 
 **Common issues:**
@@ -409,6 +409,6 @@ Final verification that all checks pass before merging.
 2. **Fix locally first:** Always reproduce and fix issues locally before pushing
 3. **Read the logs:** Don't guess what's wrong; check the actual error messages
 4. **One issue at a time:** Fix and commit each type of issue separately
-5. **Use bbud environment:** For BroteinBuddy, always run tests in bbud conda environment
+5. **Use the project's tooling:** For BroteinBuddy, run tests through npm (`npm test`, `npm run test:e2e`) and run Python scripts with `uv run`, never with a global interpreter
 6. **Don't merge on red:** Never merge a PR with failing checks
 7. **Watch patterns:** If certain checks consistently fail, improve local verification before pushing
